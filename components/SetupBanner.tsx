@@ -46,7 +46,7 @@ export default function SetupBanner() {
       <ol className="text-[11px] text-red-100/80 list-decimal list-inside space-y-1 mb-3">
         <li>Open <span className="text-accent">supabase.com/dashboard</span> → your project</li>
         <li>Settings → API → copy <strong>Project URL</strong> + keys</li>
-        <li>Paste into <span className="font-mono">.env.local</span> and restart <span className="font-mono">npm run dev</span></li>
+        <li>Paste into <span className="font-mono">.env.local</span> (local) or <span className="font-mono">Vercel → Environment Variables</span> (production) — then <strong>Redeploy</strong></li>
         <li>Run <span className="font-mono">supabase-schema.sql</span> in SQL Editor</li>
       </ol>
       <button onClick={check} className="text-xs px-3 py-1 border border-red-700 text-red-300 rounded-lg hover:bg-red-900/30">
