@@ -1,0 +1,366 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0A0A0A;
+  --card: #121212;
+  --card-border: #1F1F1F;
+  --accent: #EAB308;
+  --accent-light: #FACC15;
+  --gold: #EAB308;
+  --text: #F4F4F5;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+  --red: #EF4444;
+
+  /* Additional surfaces used in the app */
+  --surface: #1A1A1A;
+  --surface-2: #252525;
+  --tab-bar: #0F0F0F;
+  --overlay: #181818;
+  --user-card: #2C2110;
+  --pill-bg: #3F2A0D;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+/* Premium mobile app container - sharp, arena feel */
+.app-container {
+  max-width: 420px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background-color: var(--bg);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px #111;
+}
+
+/* Arena cards - distinct sharp premium style */
+.card {
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+
+.arena-card {
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  border-top: 3px solid var(--accent);
+  border-radius: 14px;
+  transition: transform 0.08s ease, border-color 0.1s ease;
+}
+
+.arena-card:active {
+  transform: scale(0.99);
+  border-top-color: var(--accent-light);
+}
+
+/* Hero / Main Event */
+.hero {
+  background-color: #111;
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+}
+
+.hero-accent {
+  color: var(--accent);
+}
+
+/* Strong primary buttons - bolder, less pill */
+.btn {
+  transition: all 0.1s cubic-bezier(0.23, 1.0, 0.32, 1);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: var(--bg);
+  border-radius: 12px;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-light);
+}
+
+.btn-primary:active {
+  transform: scale(0.985);
+}
+
+/* Gold accent pill / tag */
+.pill {
+  background-color: var(--pill-bg);
+  color: var(--accent);
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+/* Vault / Leaderboard */
+.vault-row {
+  transition: background-color 0.1s ease;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.vault-row:last-child {
+  border-bottom: none;
+}
+
+.vault-row:active {
+  background-color: var(--overlay);
+}
+
+/* Podium */
+.podium {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.podium-place {
+  flex: 1;
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.podium-place.gold {
+  border-color: var(--accent);
+  background-color: #1A1608;
+}
+
+.podium-place.silver {
+  transform: scale(0.96);
+}
+
+.podium-place.bronze {
+  transform: scale(0.92);
+}
+
+/* Bottom tab bar - distinct arena style */
+.tab-bar {
+  background-color: var(--tab-bar);
+  border-top: 1px solid #222;
+}
+
+.tab-item {
+  position: relative;
+  transition: color 0.1s ease;
+}
+
+.tab-item.active {
+  color: var(--accent);
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 2px;
+  background-color: var(--accent);
+  border-radius: 2px;
+}
+
+/* Progress - gold bar */
+.progress {
+  background-color: #222;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+}
+
+.progress-fill {
+  background-color: var(--accent);
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.23, 1.0, 0.32, 1);
+}
+
+/* Typography */
+h1, h2, h3 {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* Semantic color utilities (use these for easy theming) */
+.bg-background { background-color: var(--bg); }
+.bg-card { background-color: var(--card); }
+.border-card { border-color: var(--card-border); }
+
+.text-accent { color: var(--accent); }
+.bg-accent { background-color: var(--accent); color: var(--bg); }
+.bg-accent-light { background-color: var(--accent-light); }
+
+.text-gold { color: var(--gold); }
+
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+.bg-surface { background-color: var(--surface); }
+.border-surface-2 { border-color: var(--surface-2); }
+
+.bg-tab-bar { background-color: var(--tab-bar); }
+.bg-overlay { background-color: var(--overlay); }
+.bg-user-card { background-color: var(--user-card); border-color: rgba(234, 179, 8, 0.35); }
+.bg-pill { background-color: var(--pill-bg); color: var(--accent); }
+
+/* Live / PnL animations — SwapRoyale feel */
+@keyframes pnl-flash-up {
+  0% { background-color: rgba(34, 197, 94, 0.35); }
+  100% { background-color: transparent; }
+}
+
+@keyframes pnl-flash-down {
+  0% { background-color: rgba(239, 68, 68, 0.35); }
+  100% { background-color: transparent; }
+}
+
+.pnl-flash-up {
+  animation: pnl-flash-up 0.6s ease-out;
+}
+
+.pnl-flash-down {
+  animation: pnl-flash-down 0.6s ease-out;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.5); }
+  50% { opacity: 0.85; box-shadow: 0 0 0 4px rgba(234, 179, 8, 0); }
+}
+
+.live-dot {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes rank-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.rank-badge {
+  animation: rank-pop 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.arena-card-joined {
+  border-top-color: var(--accent-light);
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.15), 0 4px 24px rgba(234, 179, 8, 0.08);
+}
+
+@keyframes settlement-glow {
+  0%, 100% { box-shadow: 0 0 40px rgba(234, 179, 8, 0.2); }
+  50% { box-shadow: 0 0 60px rgba(234, 179, 8, 0.35); }
+}
+
+.settlement-card {
+  animation: settlement-glow 2.5s ease-in-out infinite;
+}
+
+.tab-badge {
+  position: absolute;
+  top: -2px;
+  right: calc(50% - 22px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background-color: var(--accent);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.order-preview-strip {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.12) 0%, rgba(234, 179, 8, 0.04) 100%);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 12px;
+}
+
+/* Performance / profile premium cards */
+.stat-grid-card {
+  background: linear-gradient(145deg, #141414 0%, #0f0f0f 100%);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+}
+
+.stat-hero-value {
+  background: linear-gradient(135deg, var(--accent) 0%, #ca9a04 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.profile-header-glow {
+  background: radial-gradient(ellipse at 50% 0%, rgba(234, 179, 8, 0.15) 0%, transparent 70%);
+}
+
+.invite-card {
+  background: linear-gradient(135deg, #1a1608 0%, #121212 50%, #0a0a0a 100%);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.vault-global-row:nth-child(1) {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.08) 0%, transparent 100%);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.tab-content-enter {
+  animation: slide-up 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Live Pit Feed — scrolling tape */
+.pit-feed-track {
+  display: flex;
+  gap: 2rem;
+  white-space: nowrap;
+  animation: pit-feed-scroll 35s linear infinite;
+  width: max-content;
+}
+
+.pit-feed-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes pit-feed-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.pit-feed-item {
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  padding: 0 0.25rem;
+}
+
+.pit-feed-you {
+  text-shadow: 0 0 12px rgba(234, 179, 8, 0.35);
+}
+
+.bell-urgent {
+  animation: live-pulse 1s ease-in-out infinite;
+  color: #ef4444;
+}
+
+.rank-delta-pop {
+  animation: rank-pop 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.beat-leader-card {
+  transition: border-color 0.15s ease;
+}
