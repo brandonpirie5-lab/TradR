@@ -4,9 +4,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Flame } from 'lucide-react';
 import { fetchOpeningBellStreak } from '../lib/game-api';
 import { getOpeningBellStreak, type OpeningBellStreakInfo } from '../lib/opening-bell-streak';
+import { buildStreakInfo } from '../lib/opening-bell-streak-shared';
+import { useHydrated } from '../lib/use-hydrated';
 
 export default function OpeningBellStreakBadge({ useServer = false }: { useServer?: boolean }) {
-  const [info, setInfo] = useState<OpeningBellStreakInfo>(() => getOpeningBellStreak());
+  const hydrated = useHydrated();
+  const [info, setInfo] = useState<OpeningBellStreakInfo>(() => buildStreakInfo(0, null));
 
   const refresh = useCallback(async () => {
     if (useServer) {
@@ -32,6 +35,7 @@ export default function OpeningBellStreakBadge({ useServer = false }: { useServe
     };
   }, [refresh]);
 
+  if (!hydrated) return null;
   if (info.streak < 1 && !info.playedToday) return null;
 
   const streakLabel =
