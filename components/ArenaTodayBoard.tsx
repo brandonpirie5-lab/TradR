@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { ArrowRight, Info } from 'lucide-react';
 import { Contest } from '../lib/game-types';
 import { OPENING_BELL_SLUG } from '../lib/pit-contests';
@@ -8,7 +9,10 @@ import { formatPitStartTime, getCanonicalPitOpenLabel, getPitOpenSort } from '..
 import { getContestTapeInfo, getTodayTheme, FEATURED_PIT_BY_DAY } from '../lib/tape-week';
 import { TimeLeftLabel } from './BellCountdown';
 import type { ArenaPitItem } from './ArenaHome';
-import OpeningBellStreakBadge from './OpeningBellStreakBadge';
+
+const OpeningBellStreakBadge = dynamic(() => import('./OpeningBellStreakBadge'), {
+  ssr: false,
+});
 
 type ArenaTodayBoardProps = {
   pits: ArenaPitItem[];

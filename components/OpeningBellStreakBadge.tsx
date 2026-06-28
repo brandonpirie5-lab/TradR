@@ -4,12 +4,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Flame } from 'lucide-react';
 import { fetchOpeningBellStreak } from '../lib/game-api';
 import { getOpeningBellStreak, type OpeningBellStreakInfo } from '../lib/opening-bell-streak';
-import { buildStreakInfo } from '../lib/opening-bell-streak-shared';
-import { useHydrated } from '../lib/use-hydrated';
 
 export default function OpeningBellStreakBadge({ useServer = false }: { useServer?: boolean }) {
-  const hydrated = useHydrated();
-  const [info, setInfo] = useState<OpeningBellStreakInfo>(() => buildStreakInfo(0, null));
+  const [info, setInfo] = useState<OpeningBellStreakInfo | null>(null);
 
   const refresh = useCallback(async () => {
     if (useServer) {
@@ -26,7 +23,7 @@ export default function OpeningBellStreakBadge({ useServer = false }: { useServe
   }, [useServer]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
     window.addEventListener('tradr-streak-update', refresh);
     const id = window.setInterval(refresh, 60_000);
     return () => {
@@ -35,8 +32,7 @@ export default function OpeningBellStreakBadge({ useServer = false }: { useServe
     };
   }, [refresh]);
 
-  if (!hydrated) return null;
-  if (info.streak < 1 && !info.playedToday) return null;
+  if (!info || (info.streak < 1 && !info.playedToday)) return null;
 
   const streakLabel =
     info.streak > 0 ? `${info.streak}-day tape streak` : 'Ring in today — start your streak';
