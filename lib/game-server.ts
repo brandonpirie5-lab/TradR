@@ -1,6 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { normalizePositions, Position } from './portfolio';
-import { isContestBellOpen, isJoinAllowed } from './contest-bell';
+import { isContestBellOpen, isContestTradingOpen, isJoinAllowed } from './contest-bell';
+import { isSymbolTradableNow } from './market-hours';
+import { applyReferralEntryCredits } from './referral-credits';
+import { canPlaceTrade } from './trade-limits';
+import { resolveContestAssets } from './pit-asset-schedule';
 
 export function isMissingRpcError(message?: string): boolean {
   if (!message) return false;
@@ -87,6 +91,14 @@ export async function joinContestServer(
     contest_id: contestId,
   });
 
+  if (entryFee > 0) {
+    try {
+      await applyReferralEntryCredits(admin, userId, entryFee, contest.title);
+    } catch {
+      /* referral columns optional until migration */
+    }
+  }
+
   if (contest.status === 'open') {
     await admin.from('contests').update({ status: 'active' }).eq('id', contestId);
   }
@@ -105,19 +117,56 @@ export async function executeTradeServer(
 ): Promise<{ cash: number; positions: Position[] }> {
   const { data: contest, error: contestError } = await admin
     .from('contests')
-    .select('assets, status, ends_at')
+    .select('*')
     .eq('id', contestId)
     .single();
 
   if (contestError || !contest) throw new Error('Contest not found');
   if (contest.status === 'closed') throw new Error('Contest is closed');
-  if (!isContestBellOpen({ status: contest.status, endsAt: contest.ends_at })) {
-    throw new Error('Bell has rung — trading is closed for this pit');
+  if (!isContestTradingOpen({
+    status: contest.status,
+    endsAt: contest.ends_at,
+    startsAt: contest.starts_at,
+    slug: contest.slug ?? undefined,
+  })) {
+    if (!isContestBellOpen({ status: contest.status, endsAt: contest.ends_at })) {
+      throw new Error('Bell has rung — trading is closed for this pit');
+    }
+    throw new Error('Pit hasn\'t opened yet — trading starts at bell open');
   }
 
-  const assets: string[] = contest.assets || [];
+  const scheduled = resolveContestAssets(
+    contest.slug ?? undefined,
+    contest.starts_at,
+    contest.assets || []
+  );
+  const assets: string[] = scheduled?.assets ?? (contest.assets || []);
   if (assets.length && !assets.includes(symbol)) {
     throw new Error('Symbol not allowed in this contest');
+  }
+
+  const hoursCheck = isSymbolTradableNow(
+    {
+      slug: contest.slug ?? undefined,
+      entryFee: Number(contest.entry_fee ?? 0),
+      maxEntries: contest.max_entries ?? 500,
+      startingPortfolioValue: Number(contest.starting_portfolio ?? 100000),
+    },
+    symbol
+  );
+  if (!hoursCheck.ok) {
+    throw new Error(hoursCheck.message || 'Market closed for this symbol');
+  }
+
+  const { count: tradeCount } = await admin
+    .from('trade_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('contest_id', contestId);
+
+  const limitCheck = canPlaceTrade(tradeCount ?? 0, contest.slug);
+  if (!limitCheck.ok) {
+    throw new Error(limitCheck.message || 'Trade limit reached');
   }
 
   const { data: part, error: partError } = await admin

@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Contest } from '../lib/game-types';
-import { bellMsRemaining, formatBellCountdown, isContestBellOpen } from '../lib/contest-bell';
+import { bellMsRemaining, formatBellCountdown, isContestBellOpen, startsMsRemaining } from '../lib/contest-bell';
 import { useHydrated } from '../lib/use-hydrated';
 
-type ContestClock = Pick<Contest, 'status' | 'endsAt'>;
+type ContestClock = Pick<Contest, 'status' | 'endsAt' | 'startsAt' | 'slug'>;
 
 export function BellCountdown({
   contest,
@@ -30,6 +30,11 @@ export function BellCountdown({
 
   const open = isContestBellOpen(contest);
   if (!open) return <>{contest.status === 'closed' ? closedText : rungText}</>;
+
+  const opensIn = startsMsRemaining(contest);
+  if (opensIn != null) {
+    return <>OPENS {formatBellCountdown(opensIn)}</>;
+  }
 
   const ms = bellMsRemaining(contest);
   if (ms == null) return <>{openText}</>;

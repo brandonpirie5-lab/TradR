@@ -12,6 +12,7 @@ import {
 } from './game-types';
 import { dbRowToPitContest } from './pit-contests';
 import { normalizePositions } from './portfolio';
+import type { TradeLimitInfo } from './trade-limits';
 
 function mapParticipation(p: {
   contest_id: number;
@@ -88,7 +89,13 @@ export type TradeResult = Participation & {
   rankBefore: number;
   rankDelta: number;
   tradersBehind: number;
+  tradeLimit?: TradeLimitInfo;
 };
+
+export async function fetchTradeLimit(contestId: number): Promise<TradeLimitInfo> {
+  const data = await authFetch(`/api/trades/count?contestId=${contestId}`);
+  return data as TradeLimitInfo;
+}
 
 export async function executeTradeApi(params: {
   contestId: number;
@@ -112,6 +119,7 @@ export async function executeTradeApi(params: {
     rankBefore: Number(data.rankBefore),
     rankDelta: Number(data.rankDelta),
     tradersBehind: Number(data.tradersBehind),
+    tradeLimit: data.tradeLimit,
   };
 }
 
@@ -153,6 +161,8 @@ export async function fetchLeaderboard(
 export async function settleContestApi(contestId: number): Promise<{
   rank: number;
   payout: number;
+  refund: number;
+  voided: boolean;
   newBalance: number;
   settlementPrices: Record<string, number>;
 }> {
@@ -163,6 +173,8 @@ export async function settleContestApi(contestId: number): Promise<{
   return {
     rank: data.rank,
     payout: data.payout,
+    refund: Number(data.refund || 0),
+    voided: !!data.voided,
     newBalance: Number(data.newBalance),
     settlementPrices: data.settlementPrices || {},
   };
@@ -248,10 +260,60 @@ export async function updateUsername(username: string): Promise<void> {
   });
 }
 
+export async function fetchOpeningBellStreak(): Promise<{
+  streak: number;
+  playedToday: boolean;
+  lastDayEt: string | null;
+  creditsAwarded: { days: number; amount: number; label: string }[];
+  daysToNext: number;
+  rewardLabel: string | null;
+}> {
+  return authFetch('/api/streak/opening-bell');
+}
+
+export async function syncOpeningBellStreak(): Promise<{
+  streak: number;
+  playedToday: boolean;
+  lastDayEt: string | null;
+  creditsAwarded: { days: number; amount: number; label: string }[];
+  daysToNext: number;
+  rewardLabel: string | null;
+}> {
+  return authFetch('/api/streak/opening-bell', { method: 'POST' });
+}
+
+export async function fetchReferralStats(): Promise<import('./game-types').ReferralStats> {
+  return authFetch('/api/referral/stats');
+}
+
+export async function fetchTapeLeaderboard(): Promise<{
+  weekStart: string;
+  themeLine: string;
+  entries: import('./game-types').TapeLeaderboardEntry[];
+}> {
+  const token = await getAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch('/api/tape-leaderboard', { headers });
+  if (!res.ok) throw new Error('Failed to load tape leaderboard');
+  return res.json();
+}
+
 export async function triggerAutoSettle(): Promise<{
   settled: number;
   spawned?: number;
-  contests: Array<{ id: number; title: string; yourRank?: number; yourPayout?: number }>;
+  contests: Array<{
+    id: number;
+    title: string;
+    yourRank?: number;
+    yourPayout?: number;
+    yourPortfolioValue?: number;
+    settlementPrices?: Record<string, number>;
+    voided?: boolean;
+    yourRefund?: number;
+    yourAffected?: boolean;
+  }>;
 }> {
   return authFetch('/api/contests/auto-settle', { method: 'POST' });
 }

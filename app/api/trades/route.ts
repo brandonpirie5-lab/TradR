@@ -4,7 +4,9 @@ import { getSupabaseAdmin, getSupabaseUserClient } from '@/lib/supabase-admin';
 import { fetchMarketPrices } from '@/lib/market-prices';
 import { executeTradeServer, isMissingRpcError } from '@/lib/game-server';
 import { getPortfolioValue, normalizePositions } from '@/lib/portfolio';
-import { isContestBellOpen, isSlippageExceeded } from '@/lib/contest-bell';
+import { isContestBellOpen, isContestTradingOpen, isSlippageExceeded } from '@/lib/contest-bell';
+import { isSymbolTradableNow } from '@/lib/market-hours';
+import { buildTradeLimitInfo } from '@/lib/trade-limits';
 
 async function computeUserRank(
   admin: ReturnType<typeof getSupabaseAdmin>,
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   const { data: contest, error: contestError } = await admin
     .from('contests')
-    .select('assets, starting_portfolio, status, ends_at')
+    .select('*')
     .eq('id', contestId)
     .single();
 
@@ -79,11 +81,32 @@ export async function POST(request: NextRequest) {
   if (contest.status === 'closed') {
     return badRequestResponse('Contest is closed');
   }
-  if (!isContestBellOpen({ status: contest.status, endsAt: contest.ends_at })) {
-    return badRequestResponse('Bell has rung — trading is closed for this pit');
+  if (!isContestTradingOpen({
+    status: contest.status,
+    endsAt: contest.ends_at,
+    startsAt: contest.starts_at,
+    slug: contest.slug ?? undefined,
+  })) {
+    if (!isContestBellOpen({ status: contest.status, endsAt: contest.ends_at })) {
+      return badRequestResponse('Bell has rung — trading is closed for this pit');
+    }
+    return badRequestResponse('Pit hasn\'t opened yet — ring in early, trade when the bell opens');
   }
   if (contest.assets?.length && !contest.assets.includes(symbol)) {
     return badRequestResponse('Symbol not allowed in this contest');
+  }
+
+  const hoursCheck = isSymbolTradableNow(
+    {
+      slug: contest.slug ?? undefined,
+      entryFee: Number(contest.entry_fee ?? 0),
+      maxEntries: contest.max_entries ?? 500,
+      startingPortfolioValue: Number(contest.starting_portfolio),
+    },
+    symbol
+  );
+  if (!hoursCheck.ok) {
+    return badRequestResponse(hoursCheck.message || 'Market closed for this symbol');
   }
 
   const prices = await fetchMarketPrices([symbol]);
@@ -92,9 +115,9 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'Could not fetch live price for symbol' }, { status: 502 });
   }
 
-  if (lockedPrice != null && isSlippageExceeded(lockedPrice, price)) {
+  if (lockedPrice != null && isSlippageExceeded(lockedPrice, price, symbol)) {
     return badRequestResponse(
-      `Price moved (${lockedPrice.toFixed(2)} → ${price.toFixed(2)}). Refresh and retry.`
+      `Price moved (${lockedPrice.toFixed(2)} → ${price.toFixed(2)}). Tap confirm again — we refresh on submit.`
     );
   }
 
@@ -137,6 +160,14 @@ export async function POST(request: NextRequest) {
   const allPrices = await fetchMarketPrices([...allSymbols]);
   const rankAfter = await computeUserRank(admin, contestId, user.id, { ...allPrices, ...prices });
 
+  const { count: tradeCount } = await admin
+    .from('trade_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('contest_id', contestId);
+
+  const tradeLimit = buildTradeLimitInfo(tradeCount ?? 0, contest.slug);
+
   return Response.json({
     cash,
     positions,
@@ -149,5 +180,6 @@ export async function POST(request: NextRequest) {
     rankDelta: rankBefore.rank - rankAfter.rank,
     tradersBehind: rankAfter.tradersBehind,
     priceTimestamp: new Date().toISOString(),
+    tradeLimit,
   });
 }

@@ -1,10 +1,17 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { DbContest } from '@/lib/game-types';
+import { runPitCycle } from '@/lib/pit-cycle';
 
 export async function GET() {
   const admin = getSupabaseAdmin();
   if (!admin) {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  try {
+    await runPitCycle(admin);
+  } catch (e) {
+    console.warn('Pit cycle on contest load failed', e);
   }
 
   const { data: contests, error } = await admin

@@ -50,7 +50,7 @@ export function isCryptoSymbol(sym: string): boolean {
   return !!CRYPTO_IDS[sym];
 }
 
-function getYahooTicker(symbol: string): string {
+export function getYahooTicker(symbol: string): string {
   return YAHOO_MAP[symbol] || symbol;
 }
 

@@ -6,7 +6,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const REFERRAL_BONUS_NEW = 5;
-const REFERRAL_BONUS_REFERRER = 10;
+const REFERRAL_BONUS_REFERRER = 5;
 
 async function applyReferralBonus(admin: SupabaseClient, newUserId: string, referralCode: string) {
   if (!referralCode) return;
@@ -153,6 +153,10 @@ export async function POST(request: NextRequest) {
         },
         { status: rateLimited ? 429 : 400 }
       );
+    }
+
+    if (data.user && admin && referralCode) {
+      await applyReferralBonus(admin, data.user.id, referralCode);
     }
 
     if (!data.session) {

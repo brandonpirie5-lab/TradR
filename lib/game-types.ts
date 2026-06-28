@@ -14,6 +14,7 @@ export interface DbContest {
   starting_portfolio: number;
   assets: string[];
   ends_at: string | null;
+  starts_at?: string | null;
   entry_count: number;
 }
 
@@ -34,6 +35,7 @@ export interface Contest {
   status: 'open' | 'active' | 'closed';
   startingPortfolioValue: number;
   endsAt: string | null;
+  startsAt?: string | null;
   /** e.g. "Tuesday • Mega Degen Tape" */
   assetTheme?: string;
 }
@@ -125,6 +127,23 @@ export interface ContestRecap {
 export type GlobalLeaderboardPeriod = 'week' | 'all';
 export type GlobalLeaderboardMetric = 'winnings' | 'wins' | 'win_rate';
 
+export type TapeLeaderboardEntry = {
+  userId: string;
+  username: string;
+  tapeScore: number;
+  winnings: number;
+  battles: number;
+  wins: number;
+  rank: number;
+  isYou?: boolean;
+};
+
+export type ReferralStats = {
+  inviteCount: number;
+  referralEarnings: number;
+  referralCode: string;
+};
+
 export function formatContestDate(endsAt: string | null): string {
   if (!endsAt) return 'TBD';
   const d = new Date(endsAt);
@@ -170,5 +189,6 @@ export function dbContestToContest(row: DbContest): Contest {
     status: row.status,
     startingPortfolioValue: Number(row.starting_portfolio),
     endsAt: row.ends_at,
+    startsAt: row.starts_at ?? null,
   };
 }

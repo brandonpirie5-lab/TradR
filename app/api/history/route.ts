@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { getYahooTicker } from '@/lib/market-prices';
 
 const POLYGON_BASE = 'https://api.polygon.io';
 const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
@@ -57,8 +58,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Fallback to Yahoo for stocks or general
-      const yahooTicker = CRYPTO_MAP[sym]?.replace('X:', '') || sym;
+      // Fallback to Yahoo for stocks or crypto
+      const yahooTicker = getYahooTicker(sym);
       const range = interval.includes('m') || interval.includes('h') ? '5d' : interval === '1d' ? '1mo' : '3mo';
       const url = `${YAHOO_BASE}/${yahooTicker}?interval=${interval === '1h' ? '60m' : interval.includes('m') ? '15m' : '1d'}&range=${range}`;
       const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });

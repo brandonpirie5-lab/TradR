@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { settleExpiredContests } from '@/lib/settle-contest';
-import { rotatePitContests } from '@/lib/contest-rotation';
+import { runPitCycle } from '@/lib/pit-cycle';
 
 /** Vercel Cron + manual ops: settle expired pits, then spawn fresh ones. */
 export async function GET(request: NextRequest) {
@@ -18,16 +17,20 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  const settled = await settleExpiredContests(admin);
-  const rotated = await rotatePitContests(admin);
+  const cycle = await runPitCycle(admin);
 
   return Response.json({
     ok: true,
     timestamp: new Date().toISOString(),
-    settled: settled.length,
-    settledContests: settled.map((s) => ({ id: s.contestId, title: s.contestTitle, participants: s.totalParticipants })),
-    rotation: rotated,
-    spawned: rotated.filter((r) => r.action === 'created').length,
+    activated: cycle.activated,
+    settled: cycle.settled.length,
+    settledContests: cycle.settled.map((s) => ({
+      id: s.contestId,
+      title: s.contestTitle,
+      participants: s.totalParticipants,
+    })),
+    rotation: cycle.rotation,
+    spawned: cycle.spawned,
   });
 }
 

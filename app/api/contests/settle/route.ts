@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
       success: true,
       rank: result.userRank ?? 0,
       payout: result.userPayout ?? 0,
+      refund: result.userRefund ?? 0,
+      voided: !!result.voided,
       newBalance: result.userNewBalance ?? 0,
       totalParticipants: result.totalParticipants,
       empty: result.empty,

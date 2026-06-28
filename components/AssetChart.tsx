@@ -32,6 +32,8 @@ interface AssetChartProps {
   livePrices: Record<string, number>;
   onClose?: () => void;
   userPosition?: { shares: number; avgPrice: number } | null;
+  /** Taller chart for trade ticket */
+  tall?: boolean;
 }
 
 const TIMEFRAMES = [
@@ -43,7 +45,7 @@ const TIMEFRAMES = [
   { label: '1M', value: '1M', interval: '1d' },
 ] as const;
 
-export default function AssetChart({ symbol, currentPrice, livePrices, onClose, userPosition }: AssetChartProps) {
+export default function AssetChart({ symbol, currentPrice, livePrices, onClose, userPosition, tall = false }: AssetChartProps) {
   const [timeframe, setTimeframe] = useState<typeof TIMEFRAMES[number]>(TIMEFRAMES[0]);
   const [isLoading, setIsLoading] = useState(true);
   const [chartData, setChartData] = useState<any>(null);
@@ -64,8 +66,14 @@ export default function AssetChart({ symbol, currentPrice, livePrices, onClose, 
       })).filter((c: Candle) => c.close > 0);
 
       if (tf.value === 'live') {
-        setChartData(null);
-        setLiveTicks(candles.slice(-25).map(c => c.close));
+        const ticks = candles.slice(-25).map(c => c.close);
+        if (ticks.length) {
+          setLiveTicks(ticks);
+        } else if (currentPrice > 0) {
+          setLiveTicks(Array(12).fill(currentPrice));
+        } else {
+          setLiveTicks([]);
+        }
       } else {
         const labels = candles.map(c => format(new Date(c.time), tf.interval.includes('m') || tf.interval.includes('h') ? 'HH:mm' : 'MMM dd'));
         setChartData({
@@ -139,8 +147,16 @@ export default function AssetChart({ symbol, currentPrice, livePrices, onClose, 
         ))}
       </div>
 
-      <div className="h-72 bg-[#0A0A0A] rounded border border-card p-2">
-        {chartData && !isLoading ? <Line data={chartData} options={options} /> : <div className="flex h-full items-center justify-center text-muted">Loading chart...</div>}
+      <div className={`${tall ? 'h-[22rem]' : 'h-72'} bg-[#0A0A0A] rounded border border-card p-2`}>
+        {chartData && !isLoading ? (
+          <Line data={chartData} options={options} />
+        ) : isLoading ? (
+          <div className="flex h-full items-center justify-center text-muted">Loading chart...</div>
+        ) : (
+          <div className="flex h-full items-center justify-center text-muted text-sm text-center px-4">
+            Chart data unavailable — switch timeframe or refresh prices.
+          </div>
+        )}
       </div>
 
       {userPosition && (

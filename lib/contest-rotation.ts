@@ -1,15 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { PIT_CONTEST_CATALOG } from './pit-contests';
 import { getContestAssetSchedule } from './pit-asset-schedule';
-
-const DURATION_HOURS: Record<string, number> = {
-  'opening-bell': 20,
-  'the-liquidation': 24,
-  'full-send': 24,
-  'triple-stack': 24,
-  'weekend-carnage': 48,
-  'tradfi-vs-degen': 18,
-};
+import { buildPitWindow } from './pit-schedule';
 
 export type RotationResult = {
   slug: string;
@@ -47,9 +39,8 @@ export async function rotatePitContests(admin: SupabaseClient): Promise<Rotation
       continue;
     }
 
-    const hours = DURATION_HOURS[template.slug] ?? 24;
-    const endsAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
-    const schedule = getContestAssetSchedule(template.slug);
+    const window = buildPitWindow(template.slug);
+    const schedule = getContestAssetSchedule(template.slug, window.startsAt);
 
     const payload: Record<string, unknown> = {
       title: template.title,
@@ -57,10 +48,11 @@ export async function rotatePitContests(admin: SupabaseClient): Promise<Rotation
       first_prize: template.firstPrize,
       total_prizes: template.totalPrizes,
       max_entries: template.maxEntries,
-      status: 'open',
+      status: window.status,
       starting_portfolio: 100000,
       assets: schedule.assets,
-      ends_at: endsAt,
+      starts_at: window.startsAt.toISOString(),
+      ends_at: window.endsAt.toISOString(),
     };
 
     // Optional columns (after rebrand migration)
@@ -75,6 +67,7 @@ export async function rotatePitContests(admin: SupabaseClient): Promise<Rotation
       delete payload.slug;
       delete payload.tagline;
       delete payload.badge;
+      delete payload.starts_at;
       const { data: fallback, error: err2 } = await admin.from('contests').insert(payload).select('id').single();
       if (err2) {
         results.push({ slug: template.slug, action: 'skipped' });

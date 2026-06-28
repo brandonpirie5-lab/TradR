@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, Clock, Home, List, BarChart3, User, 
-  TrendingUp, ArrowUp, ArrowDown, X, Share2, Medal, Target, Zap, Copy, Check
+  TrendingUp, ArrowUp, ArrowDown, X, Share2, Medal, Target, Zap, Copy, Check, Info
 } from 'lucide-react';
 import AssetChart from '../components/AssetChart';
 import SetupBanner from '../components/SetupBanner';
@@ -13,7 +13,15 @@ import PitFeed from '../components/PitFeed';
 import BeatLeaderCard from '../components/BeatLeaderCard';
 import OnboardingPit from '../components/OnboardingPit';
 import PitRulesStrip from '../components/PitRulesStrip';
+import ContestInfoModal from '../components/ContestInfoModal';
+import AssetChip from '../components/AssetChip';
+import MoneyZoneBar from '../components/MoneyZoneBar';
+import PitLeaderboardPanel from '../components/PitLeaderboardPanel';
+import ArenaHome from '../components/ArenaHome';
+import ActiveBattlesTour, { TourHelpButton as BattlesTourHelpButton, shouldShowActiveBattlesTour } from '../components/ActiveBattlesTour';
+import ArenaTour, { shouldShowArenaTour } from '../components/ArenaTour';
 import { BellCountdown, TimeLeftLabel } from '../components/BellCountdown';
+import { REFERRAL_HIGHLIGHTS, REFERRAL_TIERS } from '../lib/referral-program';
 import { useHydrated } from '../lib/use-hydrated';
 import { supabase, isSupabaseConfigured, Profile } from '../lib/supabase';
 import {
@@ -27,6 +35,8 @@ import {
   ActivityItem,
   ContestRecap,
   TradeLogEntry,
+  TapeLeaderboardEntry,
+  ReferralStats,
   formatTimeLeft,
   formatMemberSince,
   displayUsername,
@@ -46,17 +56,69 @@ import {
   updateUsername,
   triggerAutoSettle,
   fetchPitFeed,
+  fetchTradeLimit,
   createDepositCheckout,
+  syncOpeningBellStreak,
+  fetchReferralStats,
+  fetchTapeLeaderboard,
   type PitFeedItem,
 } from '../lib/game-api';
-import { buildDemoContests, isOpeningBellContest } from '../lib/pit-contests';
+import { buildTradeLimitInfo, canPlaceTrade, type TradeLimitInfo } from '../lib/trade-limits';
+import TradeMeter from '../components/TradeMeter';
+import PitFillBadge from '../components/PitFillBadge';
+import JoinPitFlash from '../components/JoinPitFlash';
+import PitMomentBanner from '../components/PitMomentBanner';
+import EmptyActiveBattles from '../components/EmptyActiveBattles';
+import SettleShareCard from '../components/SettleShareCard';
+import {
+  buildDemoContests,
+  findOpeningBellContest,
+  isStaleOpeningBellContest,
+  OPENING_BELL_SLUG,
+} from '../lib/pit-contests';
+import { getOpeningBellStreak, recordOpeningBellDay, applyServerStreakSnapshot } from '../lib/opening-bell-streak';
+import TapeWeekLeaderboard from '../components/TapeWeekLeaderboard';
+import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
+import { getContestRules } from '../lib/contest-rules';
+import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
+import { isSymbolTradableNow } from '../lib/market-hours';
+import {
+  affordableBuyShares,
+  formatShareInput,
+  sharesForCashPercent,
+  sharesForPositionPercent,
+} from '../lib/trade-sizing';
+import { featuredPitSortScore } from '../lib/tape-week';
+
+const SEEN_SETTLEMENTS_KEY = 'tradr_seen_settlements';
+
+function loadSeenSettlementIds(): Set<number> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(SEEN_SETTLEMENTS_KEY);
+    const ids = raw ? (JSON.parse(raw) as number[]) : [];
+    return new Set(ids);
+  } catch {
+    return new Set();
+  }
+}
+
+function markSettlementSeen(contestId: number) {
+  if (typeof window === 'undefined') return;
+  const seen = loadSeenSettlementIds();
+  seen.add(contestId);
+  localStorage.setItem(SEEN_SETTLEMENTS_KEY, JSON.stringify([...seen].slice(-80)));
+}
 import {
   isContestBellOpen,
+  isContestStarted,
+  isContestTradingOpen,
   isJoinAllowed,
   isPriceStale,
   bellMsRemaining,
   formatBellCountdown,
 } from '../lib/contest-bell';
+import ScheduledPitChip from '../components/ScheduledPitChip';
 import { estimateRankAfterTrade, portfolioAfterTrade } from '../lib/simulate-trade';
 
 type MarketPrices = Record<string, number>;
@@ -75,6 +137,9 @@ const initialPrices: MarketPrices = {
   META: 505.15,
   SOL: 142.75,
   DOGE: 0.124,
+  PEPE: 0.000012,
+  GLD: 218.5,
+  SLV: 24.8,
 };
 
 const initialUserBalance = 275;
@@ -99,7 +164,7 @@ function isCrypto(sym: string) {
 export default function TradR() {
   // UI state
   const [activeTab, setActiveTab] = useState<'home' | 'entries' | 'leaderboard' | 'account'>('home');
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'paid' | 'free'>('paid');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'paid' | 'free'>('all');
 
   // Fully functioning state
   const [contests, setContests] = useState<Contest[]>(initialContests);
@@ -117,14 +182,18 @@ export default function TradR() {
   const [tradeShares, setTradeShares] = useState('10');
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
   const [selectedChartSymbol, setSelectedChartSymbol] = useState<string>('');
+  const [chartContestId, setChartContestId] = useState<number | null>(null);
 
   // Settlement results modal (SwapRoyale-style payout screen)
   const [settlementResult, setSettlementResult] = useState<{
     contestId: number;
     rank: number;
     payout: number;
+    refund?: number;
+    voided?: boolean;
     contestTitle: string;
     portfolioValue: number;
+    startingValue: number;
     settlementPrices?: Record<string, number>;
   } | null>(null);
 
@@ -155,7 +224,7 @@ export default function TradR() {
 
   // Battles / Vault / Profile enhancements
   const [battlesSegment, setBattlesSegment] = useState<'active' | 'upcoming' | 'completed'>('active');
-  const [vaultMode, setVaultMode] = useState<'pit' | 'global'>('pit');
+  const [vaultMode, setVaultMode] = useState<'pit' | 'global' | 'tape'>('pit');
   const [globalPeriod, setGlobalPeriod] = useState<GlobalLeaderboardPeriod>('all');
   const [globalMetric, setGlobalMetric] = useState<GlobalLeaderboardMetric>('winnings');
   const [globalLeaderboard, setGlobalLeaderboard] = useState<GlobalLeaderboardEntry[]>([]);
@@ -167,6 +236,10 @@ export default function TradR() {
   const [usernameInput, setUsernameInput] = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
   const [referralCopied, setReferralCopied] = useState(false);
+  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [tapeLeaderboard, setTapeLeaderboard] = useState<TapeLeaderboardEntry[]>([]);
+  const [tapeThemeLine, setTapeThemeLine] = useState('');
+  const [tapeLoading, setTapeLoading] = useState(false);
   const [profileExtrasLoading, setProfileExtrasLoading] = useState(false);
   const [pitFeedByContest, setPitFeedByContest] = useState<Record<number, PitFeedItem[]>>({});
   const [pitFeedLoading, setPitFeedLoading] = useState(false);
@@ -180,6 +253,19 @@ export default function TradR() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [depositLoading, setDepositLoading] = useState(false);
+  const [infoContestId, setInfoContestId] = useState<number | null>(null);
+  const [showBattlesTour, setShowBattlesTour] = useState(false);
+  const [battlesTourStep, setBattlesTourStep] = useState(0);
+  const [showArenaTour, setShowArenaTour] = useState(false);
+  const [arenaTourStep, setArenaTourStep] = useState(0);
+  const [tradeLimitByContest, setTradeLimitByContest] = useState<Record<number, TradeLimitInfo>>({});
+  const [demoTradeCounts, setDemoTradeCounts] = useState<Record<number, number>>({});
+  const [joinFlashTitle, setJoinFlashTitle] = useState<string | null>(null);
+  const [pitMoment, setPitMoment] = useState<PitMoment | null>(null);
+  const [rankShake, setRankShake] = useState(false);
+  const [vaultRankAnim, setVaultRankAnim] = useState<'up' | 'down' | null>(null);
+  const autoSettledIdsRef = React.useRef<Set<number>>(new Set());
+  const serverSettledShownRef = React.useRef<Set<number>>(loadSeenSettlementIds());
 
   const hydrated = useHydrated();
   const isLoggedIn = !!user;
@@ -188,6 +274,39 @@ export default function TradR() {
   const pitDisplayName = displayUsername(profile?.username, user?.email);
 
   const shouldUseDemoSeed = !usingServerGame;
+
+  useEffect(() => {
+    if (activeTab === 'entries' && shouldShowActiveBattlesTour()) {
+      setBattlesSegment('active');
+      setBattlesTourStep(0);
+      setShowBattlesTour(true);
+    }
+    if (activeTab === 'home' && shouldShowArenaTour()) {
+      setShowArenaTour(true);
+      setArenaTourStep(0);
+    }
+  }, [activeTab]);
+
+  const infoContest = infoContestId != null ? contests.find((c) => c.id === infoContestId) : null;
+
+  const loadTradeLimit = async (contestId: number) => {
+    const contest = contests.find((c) => c.id === contestId);
+    if (!contest) return;
+    if (usingServerGame) {
+      try {
+        const info = await fetchTradeLimit(contestId);
+        setTradeLimitByContest((prev) => ({ ...prev, [contestId]: info }));
+      } catch {
+        /* offline */
+      }
+      return;
+    }
+    const used = demoTradeCounts[contestId] ?? 0;
+    setTradeLimitByContest((prev) => ({
+      ...prev,
+      [contestId]: buildTradeLimitInfo(used, contest.slug),
+    }));
+  };
 
   // Keep local balance in sync with Supabase profile when logged in
   useEffect(() => {
@@ -270,6 +389,8 @@ export default function TradR() {
     symbol: string;
     shares: number;
     executedPrice?: number;
+    tradeLimit?: TradeLimitInfo;
+    board?: LeaderboardEntry[];
   }) => {
     setLastTradeFlash({
       rankBefore: result.rankBefore,
@@ -279,6 +400,33 @@ export default function TradR() {
     });
     setTimeout(() => setLastTradeFlash(null), 4000);
 
+    if (result.board) {
+      const moment = buildPitMoment({
+        rankBefore: result.rankBefore,
+        rankAfter: result.rank,
+        rankDelta: result.rankDelta,
+        board: result.board,
+        symbol: result.symbol,
+        side: result.side,
+      });
+      if (moment) {
+        setPitMoment(moment);
+        setTimeout(() => setPitMoment(null), 5000);
+      }
+    }
+
+    if (result.rankDelta >= 3) {
+      setRankShake(true);
+      setTimeout(() => setRankShake(false), 400);
+    }
+    if (result.rankDelta > 0) {
+      setVaultRankAnim('up');
+      setTimeout(() => setVaultRankAnim(null), 1200);
+    } else if (result.rankDelta < -2) {
+      setVaultRankAnim('down');
+      setTimeout(() => setVaultRankAnim(null), 1200);
+    }
+
     const rankText =
       result.rankDelta > 0
         ? `#${result.rankBefore} → #${result.rank} ▲${result.rankDelta}`
@@ -286,8 +434,14 @@ export default function TradR() {
           ? `#${result.rankBefore} → #${result.rank}`
           : `#${result.rank} holding`;
 
+    const tradesLeft = result.tradeLimit?.unlimited
+      ? ''
+      : result.tradeLimit?.remaining != null
+        ? ` • ${result.tradeLimit.remaining} trades left`
+        : '';
+
     showToast(
-      `${result.side.toUpperCase()} ${result.shares} ${result.symbol} @ $${result.executedPrice?.toFixed(2) || '—'} • ${rankText}`
+      `${result.side.toUpperCase()} ${result.shares} ${result.symbol} @ $${result.executedPrice?.toFixed(2) || '—'} • ${rankText}${tradesLeft}`
     );
   };
 
@@ -311,16 +465,31 @@ export default function TradR() {
     if (!usingServerGame) return;
     setProfileExtrasLoading(true);
     try {
-      const [stats, acts] = await Promise.all([
+      const [stats, acts, refStats] = await Promise.all([
         fetchMyStats().catch(() => null),
         fetchActivity(25).catch(() => []),
+        fetchReferralStats().catch(() => null),
       ]);
       if (stats) setUserStats(stats);
       setActivities(acts);
+      if (refStats) setReferralStats(refStats);
     } catch (e) {
       console.warn('Profile extras load failed', e);
     } finally {
       setProfileExtrasLoading(false);
+    }
+  };
+
+  const refreshTapeLeaderboard = async () => {
+    setTapeLoading(true);
+    try {
+      const data = await fetchTapeLeaderboard();
+      setTapeLeaderboard(data.entries);
+      setTapeThemeLine(data.themeLine);
+    } catch (e) {
+      console.warn('Tape leaderboard load failed', e);
+    } finally {
+      setTapeLoading(false);
     }
   };
 
@@ -343,13 +512,34 @@ export default function TradR() {
     showToast('Pit name saved locally');
   };
 
+  const referralLink = () => {
+    const code =
+      referralStats?.referralCode ||
+      profile?.referral_code ||
+      `pit${user?.id?.replace(/-/g, '').slice(0, 8) || 'demo'}`;
+    return `${typeof window !== 'undefined' ? window.location.origin : ''}?ref=${code}`;
+  };
+
   const copyReferralLink = () => {
-    const code = profile?.referral_code || `pit${user?.id?.replace(/-/g, '').slice(0, 8) || 'demo'}`;
-    const link = `${typeof window !== 'undefined' ? window.location.origin : ''}?ref=${code}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(referralLink());
     setReferralCopied(true);
     showToast('Invite link copied!');
     setTimeout(() => setReferralCopied(false), 2000);
+  };
+
+  const shareReferralLink = async () => {
+    const link = referralLink();
+    const text = `Join me on TradR Pit — $${REFERRAL_TIERS.friendSignupBonus} signup bonus: ${link}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, title: 'TradR Pit Invite' });
+      } else {
+        await navigator.clipboard.writeText(link);
+        showToast('Invite link copied!');
+      }
+    } catch {
+      /* user cancelled share */
+    }
   };
 
   // Stripe availability + deposit return URL
@@ -402,8 +592,36 @@ export default function TradR() {
           await syncGameFromServer();
           loadProfileExtras();
           if (result.settled > 0) {
-            const names = result.contests.map((c) => c.title).join(', ');
-            showToast(`Pit closed: ${names}`);
+            const yours = result.contests.find(
+              (c) => c.yourAffected || c.yourRank != null || c.voided
+            );
+            if (yours && !serverSettledShownRef.current.has(yours.id)) {
+              serverSettledShownRef.current.add(yours.id);
+              markSettlementSeen(yours.id);
+              const settledContest = contests.find((x) => x.id === yours.id);
+              if (settledContest?.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(settledContest);
+              setSettlementResult({
+                contestId: yours.id,
+                rank: yours.yourRank ?? 0,
+                payout: yours.yourPayout ?? 0,
+                refund: yours.yourRefund,
+                voided: yours.voided,
+                contestTitle: yours.title,
+                portfolioValue: yours.yourPortfolioValue ?? 0,
+                startingValue: participations[yours.id]?.startingValue ?? 100_000,
+                settlementPrices: yours.settlementPrices,
+              });
+            } else {
+              const unseen = result.contests.filter((c) => !serverSettledShownRef.current.has(c.id));
+              if (unseen.length) {
+                unseen.forEach((c) => {
+                  serverSettledShownRef.current.add(c.id);
+                  markSettlementSeen(c.id);
+                });
+                const names = unseen.map((c) => c.title).join(', ');
+                showToast(`Pit closed: ${names}`);
+              }
+            }
           }
           if ((result.spawned ?? 0) > 0) {
             showToast(`${result.spawned} fresh pit(s) spawned`);
@@ -414,8 +632,15 @@ export default function TradR() {
       }
     };
     runAutoSettle();
-    const interval = setInterval(runAutoSettle, 60000);
-    return () => clearInterval(interval);
+    const interval = setInterval(runAutoSettle, 30000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') runAutoSettle();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [usingServerGame, user?.id]);
 
   // Realtime vault — refresh when any trader moves in your pits
@@ -549,7 +774,11 @@ export default function TradR() {
       if (isSupabaseConfigured) {
         try {
           const serverContests = await fetchContests();
-          if (serverContests.length) setContests(serverContests);
+          if (serverContests.length) {
+            setContests(serverContests);
+            const freePitId = findOpeningBellContest(serverContests)?.id;
+            if (freePitId) refreshLeaderboard(freePitId);
+          }
         } catch (e) {
           console.warn('Using local contest fallback', e);
         }
@@ -600,12 +829,16 @@ export default function TradR() {
     boot();
   }, []);
 
-  // Poll leaderboard for joined + vault contests
+  // Poll leaderboard for joined + vault + canonical free pit
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const contestIds = [...new Set(Object.keys(participations).map(Number))];
     if (vaultContestId && !contestIds.includes(vaultContestId)) {
       contestIds.push(vaultContestId);
+    }
+    const freePitId = findOpeningBellContest(contests)?.id;
+    if (freePitId && !contestIds.includes(freePitId)) {
+      contestIds.push(freePitId);
     }
     if (!contestIds.length) return;
 
@@ -614,7 +847,7 @@ export default function TradR() {
       contestIds.forEach((id) => refreshLeaderboard(id));
     }, 10000);
     return () => clearInterval(interval);
-  }, [participations, isSupabaseConfigured, vaultContestId, user?.id]);
+  }, [participations, contests, isSupabaseConfigured, vaultContestId, user?.id]);
 
   useEffect(() => {
     if (usingServerGame && user) loadProfileExtras();
@@ -628,17 +861,32 @@ export default function TradR() {
     if (vaultMode === 'global' && isSupabaseConfigured) {
       refreshGlobalLeaderboard(globalPeriod, globalMetric);
     }
+    if (vaultMode === 'tape' && isSupabaseConfigured) {
+      refreshTapeLeaderboard();
+    }
   }, [vaultMode, globalPeriod, globalMetric, isSupabaseConfigured]);
 
   useEffect(() => {
     const joined = Object.keys(participations).map(Number);
     if (!joined.length) return;
+    const canonical = findOpeningBellContest(contests);
     const preferred =
+      (canonical?.id && joined.includes(canonical.id) ? canonical.id : undefined) ??
       joined.find((id) => {
         const c = contests.find((x) => x.id === id);
         return c && c.status !== 'closed';
-      }) ?? joined[joined.length - 1];
-    setVaultContestId((prev) => prev ?? preferred);
+      }) ??
+      joined[joined.length - 1];
+    setVaultContestId((prev) => {
+      if (prev != null) {
+        const prevContest = contests.find((c) => c.id === prev);
+        if (prevContest && canonical && isStaleOpeningBellContest(prevContest, canonical)) {
+          return joined.includes(canonical.id) ? canonical.id : preferred;
+        }
+        return prev;
+      }
+      return preferred;
+    });
   }, [participations, contests]);
 
   useEffect(() => {
@@ -713,21 +961,13 @@ export default function TradR() {
   const getPortfolioValue = (p: Participation): number =>
     calcPortfolioValue(p, prices);
 
-  const featuredContest = contests.find((c) => c.status !== 'closed') || contests[0];
+  const canonicalOpeningBell = findOpeningBellContest(contests);
 
-  const heroContest = (() => {
-    if (joinedContests.length > 0) {
-      const id =
-        vaultContestId ??
-        joinedContests.find((cid) => {
-          const c = contests.find((x) => x.id === cid);
-          return c && c.status !== 'closed';
-        }) ??
-        joinedContests[0];
-      return contests.find((c) => c.id === id) || featuredContest;
-    }
-    return featuredContest;
-  })();
+  const featuredContest =
+    contests.find((c) => c.status !== 'closed' && isContestTradingOpen(c)) ||
+    canonicalOpeningBell ||
+    contests.find((c) => c.status !== 'closed') ||
+    contests[0];
 
   const entryFillPct = (c: Contest) =>
     Math.min(100, Math.round((c.entries / Math.max(c.maxEntries, 1)) * 100));
@@ -737,11 +977,22 @@ export default function TradR() {
     : 0;
 
   const resolveVaultContestId = (): number | null => {
-    if (vaultContestId) return vaultContestId;
+    if (vaultContestId) {
+      const prevContest = contests.find((c) => c.id === vaultContestId);
+      if (prevContest && isStaleOpeningBellContest(prevContest, canonicalOpeningBell)) {
+        if (canonicalOpeningBell?.id && joinedContests.includes(canonicalOpeningBell.id)) {
+          return canonicalOpeningBell.id;
+        }
+      }
+      return vaultContestId;
+    }
     if (joinedContests.length) {
+      if (canonicalOpeningBell?.id && joinedContests.includes(canonicalOpeningBell.id)) {
+        return canonicalOpeningBell.id;
+      }
       const live = joinedContests.find((id) => {
         const c = contests.find((x) => x.id === id);
-        return c && c.status !== 'closed';
+        return c && c.status !== 'closed' && !isStaleOpeningBellContest(c, canonicalOpeningBell);
       });
       return live ?? joinedContests[joinedContests.length - 1];
     }
@@ -813,6 +1064,101 @@ export default function TradR() {
     return you?.rank ?? null;
   };
 
+  const getLiveParticipantCount = (contestId: number): number => {
+    if (usingServerGame) {
+      const board = leaderboardByContest[contestId];
+      if (board?.length) return board.length;
+      const contest = contests.find((c) => c.id === contestId);
+      if (contest?.entries) return contest.entries;
+      return participations[contestId] ? 1 : 0;
+    }
+    return participations[contestId] ? 1 : 0;
+  };
+
+  const celebrateOpeningBellStreak = async (contest?: Contest) => {
+    if (contest?.slug !== OPENING_BELL_SLUG) return;
+
+    if (usingServerGame) {
+      try {
+        const before = getOpeningBellStreak();
+        const result = await syncOpeningBellStreak();
+        const after = applyServerStreakSnapshot(result.streak, result.lastDayEt);
+
+        if (result.creditsAwarded.length > 0) {
+          for (const credit of result.creditsAwarded) {
+            showToast(`${credit.label} — +$${credit.amount} pit credit`);
+          }
+          await syncGameFromServer();
+          loadProfileExtras();
+        } else if (after.streak >= 3 && before.streak < 3) {
+          showToast('3-day tape streak — $2 pit credit unlocks at settlement');
+        } else if (after.streak >= 7 && before.streak < 7) {
+          showToast('Week on the tape — $5 pit credit unlocks at settlement');
+        }
+      } catch {
+        const before = getOpeningBellStreak();
+        const after = recordOpeningBellDay();
+        if (after.streak >= 3 && before.streak < 3) {
+          showToast('3-day tape streak — $2 pit credit unlocks at settlement');
+        } else if (after.streak >= 7 && before.streak < 7) {
+          showToast('Week on the tape — $5 pit credit unlocks at settlement');
+        }
+      }
+      return;
+    }
+
+    const before = getOpeningBellStreak();
+    const after = recordOpeningBellDay();
+    if (after.streak >= 3 && before.streak < 3) {
+      showToast('3-day tape streak — $2 pit credit unlocks at settlement');
+    } else if (after.streak >= 7 && before.streak < 7) {
+      showToast('Week on the tape — $5 pit credit unlocks at settlement');
+    }
+  };
+
+  const shareSettlement = async () => {
+    if (!settlementResult) return;
+    const text = buildPitShareText({
+      contestTitle: settlementResult.contestTitle,
+      rank: settlementResult.rank,
+      payout: settlementResult.payout,
+      voided: settlementResult.voided,
+      refund: settlementResult.refund,
+      portfolioValue: settlementResult.portfolioValue,
+      startingValue: settlementResult.startingValue,
+    });
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, title: 'TradR Pit' });
+      } else {
+        await navigator.clipboard.writeText(text);
+        showToast('Result copied — share the tape');
+      }
+    } catch {
+      /* user cancelled share */
+    }
+  };
+
+  const dismissSettlement = () => {
+    if (settlementResult?.contestId != null) {
+      markSettlementSeen(settlementResult.contestId);
+      serverSettledShownRef.current.add(settlementResult.contestId);
+    }
+    setSettlementResult(null);
+  };
+
+  const runItBack = async () => {
+    const closedId = settlementResult?.contestId;
+    dismissSettlement();
+    const next = findNextJoinablePit(contests, joinedContests, closedId);
+    setActiveTab('home');
+    if (next) {
+      await joinArena(next.id);
+    } else {
+      showToast('No open arenas right now — fresh pits drop soon');
+    }
+  };
+
   const openContestRecap = async (contestId: number) => {
     if (usingServerGame) {
       try {
@@ -858,28 +1204,91 @@ export default function TradR() {
     }
   };
 
-  const heroRank = rankInContest(heroContest.id);
+  const isJoinableContest = (c: Contest) =>
+    (c.status === 'open' || c.status === 'active') && isJoinAllowed(c);
 
-  const filteredContests = contests.filter(c => {
-    if (c.status !== 'open') return false;
+  const matchesHomeFilter = (c: Contest) => {
     if (selectedFilter === 'paid') return c.entryFee > 0;
     if (selectedFilter === 'free') return c.entryFee === 0;
     return true;
+  };
+
+  const todayDayIndex = new Date().getDay();
+
+  const arenaPitPriority = (c: Contest, scheduled: boolean) => {
+    const joined = joinedContests.includes(c.id);
+    if (joined && isContestTradingOpen(c)) return 0;
+    if (joined && scheduled) return 1;
+    if (!joined && isContestTradingOpen(c)) return 2;
+    return 3;
+  };
+
+  const arenaPitList: Array<{ contest: Contest; scheduled: boolean }> = [];
+  const seenArenaPitIds = new Set<number>();
+  for (const c of contests) {
+    if (c.status !== 'open' && c.status !== 'active') continue;
+    if (isStaleOpeningBellContest(c, canonicalOpeningBell)) continue;
+    if (!matchesHomeFilter(c)) continue;
+
+    const scheduled = isJoinableContest(c) && !isContestStarted(c);
+    const live = isContestTradingOpen(c);
+    if (!live && !scheduled) continue;
+    if (seenArenaPitIds.has(c.id)) continue;
+
+    arenaPitList.push({ contest: c, scheduled });
+    seenArenaPitIds.add(c.id);
+  }
+  arenaPitList.sort((a, b) => {
+    const priorityDiff =
+      arenaPitPriority(a.contest, a.scheduled) - arenaPitPriority(b.contest, b.scheduled);
+    if (priorityDiff !== 0) return priorityDiff;
+    const featuredDiff =
+      featuredPitSortScore(a.contest.slug, todayDayIndex) -
+      featuredPitSortScore(b.contest.slug, todayDayIndex);
+    if (featuredDiff !== 0) return featuredDiff;
+    return b.contest.firstPrize - a.contest.firstPrize;
   });
 
-  const isBattleActive = (p: Participation) => {
+  const floorLivePitCount = arenaPitList.filter((p) => !p.scheduled).length;
+  const floorPrizePool = arenaPitList
+    .filter((p) => !p.scheduled)
+    .reduce((sum, p) => sum + p.contest.totalPrizes, 0);
+
+  const isBattleOpen = (p: Participation) => {
     const c = contests.find((cc) => cc.id === p.contestId);
     return !!c && c.status !== 'closed' && p.finalRank == null;
   };
 
-  const activeBattles = Object.values(participations).filter(isBattleActive);
+  const activeBattles = Object.values(participations).filter(
+    (p) => isBattleOpen(p) && isContestStarted(contests.find((c) => c.id === p.contestId)!)
+  );
+  const primaryActiveBattle = activeBattles.length
+    ? [...activeBattles].sort((a, b) => getPortfolioValue(b) - getPortfolioValue(a))[0]
+    : null;
+  const primaryActiveContest = primaryActiveBattle
+    ? contests.find((c) => c.id === primaryActiveBattle.contestId)
+    : null;
+
+  const spotlightContest = (() => {
+    if (primaryActiveContest) return primaryActiveContest;
+    const firstLive = arenaPitList.find((p) => !p.scheduled);
+    if (firstLive) return firstLive.contest;
+    const firstScheduled = arenaPitList.find((p) => p.scheduled);
+    if (firstScheduled) return firstScheduled.contest;
+    return featuredContest;
+  })();
+  const scheduledBattles = Object.values(participations).filter(
+    (p) => isBattleOpen(p) && !isContestStarted(contests.find((c) => c.id === p.contestId)!)
+  );
   const completedBattles = Object.values(participations).filter((p) => {
     const c = contests.find((cc) => cc.id === p.contestId);
     return c?.status === 'closed' || p.finalRank != null;
   });
   const upcomingContests = contests.filter(
-    (c) => (c.status === 'open' || c.status === 'active') && !joinedContests.includes(c.id)
+    (c) => isJoinableContest(c) && !joinedContests.includes(c.id)
   );
+  const liveUpcomingContests = upcomingContests.filter((c) => isContestStarted(c));
+  const scheduledUpcomingContests = upcomingContests.filter((c) => !isContestStarted(c));
 
   const computeDemoStats = (): UserPerformanceStats => {
     const all = Object.values(participations);
@@ -943,8 +1352,14 @@ export default function TradR() {
         await refreshLeaderboard(contestId);
         const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
-        showToast(`In the pit: ${contest.title}. $100k fake money, real ego.`);
-        setTimeout(() => setTradingContestId(contestId), 80);
+        setJoinFlashTitle(contest.title);
+        const fresh = contests.find((c) => c.id === contestId) ?? contest;
+        if (isContestTradingOpen(fresh)) {
+          setTimeout(() => setTradingContestId(contestId), 900);
+        } else {
+          showToast('Rang in! Trading opens when the pit bell starts.');
+        }
+        await loadTradeLimit(contestId);
       } catch (err: any) {
         showToast(err.message || 'Failed to join contest', 'error');
       }
@@ -975,8 +1390,13 @@ export default function TradR() {
 
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
-    showToast(`In the pit: ${contest.title}. $100k fake money, real ego.`);
-    setTimeout(() => setTradingContestId(contestId), 80);
+    setJoinFlashTitle(contest.title);
+    if (isContestTradingOpen(contest)) {
+      setTimeout(() => setTradingContestId(contestId), 900);
+    } else {
+      showToast('Rang in! Trading opens when the pit bell starts.');
+    }
+    loadTradeLimit(contestId);
   };
 
   const openTradeModal = (contestId: number) => {
@@ -985,19 +1405,56 @@ export default function TradR() {
       showToast('Bell has rung — trading is closed', 'error');
       return;
     }
+    if (contest && !isContestTradingOpen(contest)) {
+      showToast('Pit opens soon — you\'re rang in. Trading starts when the bell opens.', 'error');
+      return;
+    }
+    const firstAsset = contest?.assets[0] || '';
     setTradingContestId(contestId);
-    setTradeSymbol(contest?.assets[0] || '');
+    setTradeSymbol(firstAsset);
+    setSelectedChartSymbol(firstAsset);
     setTradeShares('10');
     setTradeSide('buy');
+    loadTradeLimit(contestId);
   };
 
   const closeTradeModal = () => {
     setTradingContestId(null);
+    setSelectedChartSymbol('');
+  };
+
+  const openChart = (symbol: string, contestId: number) => {
+    setChartContestId(contestId);
+    setSelectedChartSymbol(symbol);
+  };
+
+  const closeChart = () => {
+    setSelectedChartSymbol('');
+    setChartContestId(null);
+  };
+
+  const openLeaderboard = (contestId: number) => {
+    setVaultContestId(contestId);
+    setVaultMode('pit');
+    refreshLeaderboard(contestId);
+    setActiveTab('leaderboard');
+  };
+
+  const handleHomePitPress = (contest: Contest) => {
+    if (joinedContests.includes(contest.id)) {
+      if (isContestTradingOpen(contest)) openTradeModal(contest.id);
+      else {
+        setActiveTab('entries');
+        setBattlesSegment('active');
+      }
+    } else {
+      joinArena(contest.id);
+    }
   };
 
   const executeTrade = async () => {
     if (!tradingContestId) return;
-    const sharesNum = parseFloat(tradeShares);
+    let sharesNum = parseFloat(tradeShares);
     if (!tradeSymbol || isNaN(sharesNum) || sharesNum <= 0) return;
 
     const p = participations[tradingContestId];
@@ -1008,15 +1465,42 @@ export default function TradR() {
       showToast('Bell has rung — trading is closed', 'error');
       return;
     }
-    if (isPriceStale(lastPriceUpdate)) {
-      showToast('Prices are stale — tap REFRESH before trading', 'error');
-      await fetchLivePrices([tradeSymbol]);
+    if (contest && !isContestTradingOpen(contest)) {
+      showToast('Pit hasn\'t opened yet — wait for the scheduled bell', 'error');
       return;
     }
 
-    const lockedPrice = prices[tradeSymbol];
+    const freshPrices = await fetchLivePrices([tradeSymbol]);
+    const lockedPrice = freshPrices[tradeSymbol] ?? prices[tradeSymbol];
     if (!lockedPrice) {
       showToast('No live price for this symbol', 'error');
+      return;
+    }
+
+    if (tradeSide === 'buy') {
+      sharesNum = affordableBuyShares(p.cash, lockedPrice, tradeSymbol, sharesNum);
+      if (sharesNum <= 0) {
+        showToast('Not enough cash for this order', 'error');
+        return;
+      }
+      setTradeShares(formatShareInput(sharesNum, tradeSymbol));
+    }
+
+    if (contest) {
+      const hoursCheck = isSymbolTradableNow(contest, tradeSymbol);
+      if (!hoursCheck.ok) {
+        showToast(hoursCheck.message || 'Market closed for this symbol', 'error');
+        return;
+      }
+    }
+
+    const contestForLimit = contests.find((c) => c.id === tradingContestId);
+    const usedTrades = usingServerGame
+      ? (tradeLimitByContest[tradingContestId]?.used ?? 0)
+      : (demoTradeCounts[tradingContestId] ?? 0);
+    const limitCheck = canPlaceTrade(usedTrades, contestForLimit?.slug);
+    if (!limitCheck.ok) {
+      showToast(limitCheck.message || 'Trade limit reached', 'error');
       return;
     }
 
@@ -1044,6 +1528,11 @@ export default function TradR() {
           { time: now, action: `${tradeSide.toUpperCase()} ${sharesNum} ${tradeSymbol} @ $${updated.executedPrice}`, amount: undefined },
           ...h,
         ].slice(0, 12));
+        if (updated.tradeLimit) {
+          setTradeLimitByContest((prev) => ({ ...prev, [tradingContestId]: updated.tradeLimit! }));
+        }
+        await refreshLeaderboard(tradingContestId);
+        const boardAfter = getContestBoard(tradingContestId);
         showRankTradeToast({
           rankBefore: updated.rankBefore,
           rank: updated.rank,
@@ -1054,9 +1543,11 @@ export default function TradR() {
           symbol: tradeSymbol,
           shares: sharesNum,
           executedPrice: updated.executedPrice,
+          tradeLimit: updated.tradeLimit,
+          board: boardAfter,
         });
-        await refreshLeaderboard(tradingContestId);
         await loadPitFeed(tradingContestId);
+        celebrateOpeningBellStreak(contestForLimit);
         closeTradeModal();
       } catch (err: any) {
         showToast(err.message || 'Trade failed', 'error');
@@ -1125,6 +1616,16 @@ export default function TradR() {
       createdAt: new Date().toISOString(),
       isYou: true,
     });
+    const nextUsed = (demoTradeCounts[tradingContestId] ?? 0) + 1;
+    setDemoTradeCounts((prev) => ({ ...prev, [tradingContestId]: nextUsed }));
+    const demoLimit = buildTradeLimitInfo(nextUsed, contestForLimit?.slug);
+    setTradeLimitByContest((prev) => ({ ...prev, [tradingContestId]: demoLimit }));
+
+    const updatedBoard = board
+      .map((e) => (e.isYou ? { ...e, portfolioValue: newVal } : e))
+      .sort((a, b) => b.portfolioValue - a.portfolioValue)
+      .map((e, i) => ({ ...e, rank: i + 1 }));
+
     showRankTradeToast({
       rankBefore,
       rank: rankAfter,
@@ -1135,7 +1636,10 @@ export default function TradR() {
       symbol: tradeSymbol,
       shares: sharesNum,
       executedPrice: price,
+      tradeLimit: demoLimit,
+      board: updatedBoard,
     });
+    celebrateOpeningBellStreak(contestForLimit);
     closeTradeModal();
   };
 
@@ -1221,18 +1725,75 @@ export default function TradR() {
           { time: now, action: `Settled ${c.title} (#${result.rank})`, amount: result.payout },
           ...h,
         ].slice(0, 12));
+        markSettlementSeen(contestId);
+        serverSettledShownRef.current.add(contestId);
+        if (c.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(c);
         setSettlementResult({
           contestId,
           rank: result.rank,
           payout: result.payout,
+          refund: result.refund,
+          voided: result.voided,
           contestTitle: c.title,
           portfolioValue: finalValue,
+          startingValue: p.startingValue,
           settlementPrices: result.settlementPrices,
         });
-        showToast(`Pit closed! Rank #${result.rank} • +$${result.payout} added to balance`);
+        if (result.voided) {
+          showToast(
+            result.refund > 0
+              ? `Pit didn't fill — $${result.refund} entry refunded`
+              : `Pit didn't fill — no prize pool this bell`
+          );
+        } else {
+          showToast(`Pit closed! Rank #${result.rank} • +$${result.payout} added to balance`);
+        }
       } catch (err: any) {
         showToast(err.message || 'Settlement failed', 'error');
       }
+      return;
+    }
+
+    const participantCount = getLiveParticipantCount(contestId);
+    const rules = getContestRules(c);
+    const finalValue = getPortfolioValue(p);
+
+    if (participantCount < rules.minEntries) {
+      const refund = c.entryFee;
+      const newBal = userBalance + refund;
+      setUserBalance(newBal);
+      setContests(contests.map((x) => (x.id === contestId ? { ...x, status: 'closed' as const } : x)));
+      setParticipations((prev) => ({
+        ...prev,
+        [contestId]: {
+          ...prev[contestId],
+          finalRank: undefined,
+          finalValue,
+          payout: 0,
+        },
+      }));
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setHistory((h) => [
+        { time: now, action: `Voided ${c.title} (min ${rules.minEntries} traders)`, amount: refund },
+        ...h,
+      ].slice(0, 12));
+      markSettlementSeen(contestId);
+      autoSettledIdsRef.current.add(contestId);
+      setSettlementResult({
+        contestId,
+        rank: 0,
+        payout: 0,
+        refund,
+        voided: true,
+        contestTitle: c.title,
+        portfolioValue: finalValue,
+        startingValue: p.startingValue,
+      });
+      showToast(
+        refund > 0
+          ? `Pit didn't fill — $${refund} entry refunded`
+          : `Pit didn't fill — invite friends next time`
+      );
       return;
     }
 
@@ -1242,7 +1803,6 @@ export default function TradR() {
     else if (rank === 2) payout = Math.floor(c.firstPrize * 0.38);
     else if (rank === 3) payout = Math.floor(c.firstPrize * 0.18);
 
-    const finalValue = getPortfolioValue(p);
     const newBal = userBalance + payout;
     setUserBalance(newBal);
     setContests(contests.map((x) => (x.id === contestId ? { ...x, status: 'closed' as const } : x)));
@@ -1258,16 +1818,52 @@ export default function TradR() {
 
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setHistory((h) => [{ time: now, action: `Settled ${c.title} (#${rank})`, amount: payout }, ...h].slice(0, 12));
+    if (c.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(c);
     setSettlementResult({
       contestId,
       rank,
       payout,
       contestTitle: c.title,
       portfolioValue: finalValue,
+      startingValue: p.startingValue,
       settlementPrices: { ...prices },
     });
     showToast(`Pit closed! Rank #${rank} • +$${payout} added to balance`);
   };
+
+  // Demo mode: auto-settle when bell expires
+  useEffect(() => {
+    if (usingServerGame) return;
+    void bellTick;
+
+    Object.values(participations).forEach((p) => {
+      const c = contests.find((cc) => cc.id === p.contestId);
+      if (!c || c.status === 'closed' || p.finalRank != null) return;
+      if (autoSettledIdsRef.current.has(p.contestId)) return;
+
+      const expired = c.endsAt
+        ? bellMsRemaining(c) !== null && bellMsRemaining(c)! <= 0
+        : c.timeLeft === 'CLOSED SOON';
+
+      if (expired) {
+        autoSettledIdsRef.current.add(p.contestId);
+        settleContest(p.contestId);
+      }
+    });
+  }, [bellTick, usingServerGame, participations, contests]);
+
+  // Demo: activate scheduled pits when starts_at passes
+  useEffect(() => {
+    void bellTick;
+    setContests((prev) =>
+      prev.map((c) => {
+        if (c.status === 'open' && c.startsAt && isContestStarted(c)) {
+          return { ...c, status: 'active' as const };
+        }
+        return c;
+      })
+    );
+  }, [bellTick]);
 
   const resetDemo = () => {
     localStorage.removeItem('tradr-state');
@@ -1374,7 +1970,7 @@ export default function TradR() {
     setShowOnboarding(false);
   };
 
-  const openingBellContest = contests.find(isOpeningBellContest);
+  const openingBellContest = canonicalOpeningBell;
 
   // For logged in users: seed a demo participation to their Supabase account (polish + test)
   const seedDemoToAccount = async () => {
@@ -1439,494 +2035,193 @@ export default function TradR() {
       }
       const joinedIds = Object.keys(state.participations).map(Number);
       joinedIds.forEach((id) => refreshLeaderboard(id));
+      const freePitId = findOpeningBellContest(state.contests)?.id;
+      if (freePitId) refreshLeaderboard(freePitId);
     } catch (err) {
       console.log('Supabase load skipped (demo mode or tables not ready)');
     }
   };
 
   return (
-    <div className="app-container mx-auto bg-background text-[var(--text)] min-h-screen flex flex-col">
+    <div className={`app-container mx-auto bg-background text-[var(--text)] min-h-screen flex flex-col ${activeTab === 'home' ? 'arena-mode' : ''} ${rankShake ? 'screen-rank-shake' : ''}`}>
       <SetupBanner />
-      {/* Header - Bold new branding */}
-      <div className="px-5 pt-6 pb-4 flex items-center justify-between border-b border-[#1A1A1A]">
-        <div className="flex items-baseline gap-1.5">
-          <div className="font-black text-4xl tracking-[-3.5px] text-white">TRADR</div>
-          <div className="text-[10px] font-mono tracking-[3px] text-accent mt-1.5">PIT</div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest text-muted flex items-center gap-1 justify-end">
-              BALANCE 
-              <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+      {/* Header */}
+      {activeTab === 'home' ? (
+        <div className="pit-chrome">
+          <div className="pit-chrome-left">
+            <div className="pit-chrome-mark">
+              TRADR<span>PIT</span>
             </div>
-            <div className="font-mono text-xl font-semibold tabular-nums tracking-tighter">${effectiveBalance.toFixed(2)}</div>
-            {user && (
-              <div className="text-[9px] text-accent">
-                {gameSyncing ? 'syncing…' : 'live multiplayer'} • {pitDisplayName}
+            {floorLivePitCount > 0 && (
+              <div className="pit-chrome-status">
+                <span className="pit-chrome-orb" aria-hidden />
+                {floorLivePitCount} live · ${floorPrizePool.toLocaleString()} in prizes
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end text-[9px] text-muted mr-1">
-            <div className="flex gap-2 items-center">
-              <button 
-                onClick={() => fetchLivePrices()}
-                className="text-accent hover:underline active:text-white text-[10px]"
+          <div className="flex items-center gap-3">
+            <div className="font-mono text-sm font-semibold tabular-nums text-accent">
+              ${effectiveBalance.toFixed(2)}
+            </div>
+            {!stripeEnabled && user && (
+              <button
+                onClick={() => deposit(50)}
+                className="text-[10px] px-2 py-1 border border-accent/40 text-accent rounded-lg"
               >
-                REFRESH
+                +$50
               </button>
-              {!stripeEnabled && (
-                <button 
-                  onClick={() => deposit(50)}
-                  className="text-xs px-2 py-0.5 bg-accent text-black rounded hover:bg-accent-light"
-                >
-                  +$50
-                </button>
+            )}
+            <button
+              onClick={() => setActiveTab('account')}
+              className="w-8 h-8 rounded-full bg-surface border border-card flex items-center justify-center active:bg-overlay overflow-hidden"
+            >
+              {user ? (
+                <div className="text-[10px] font-mono bg-accent text-black w-full h-full flex items-center justify-center">
+                  {user.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+              ) : (
+                <User size={16} />
               )}
-            </div>
-            {hydrated && lastPriceUpdate && (
-              <div>{lastPriceUpdate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-            )}
-            <div className="text-[8px] opacity-60 flex items-center gap-1">
-              real data (Polygon/CG/Yahoo)
-              {lastPriceUpdate && <span className="text-accent">• live</span>}
-              {user && <span className="text-accent">• Supabase connected</span>}
-            </div>
+            </button>
           </div>
-          <button 
-            onClick={() => setActiveTab('account')}
-            className="w-9 h-9 rounded-full bg-surface border border-card flex items-center justify-center active:bg-overlay overflow-hidden"
-          >
-            {user ? (
-              <div className="text-[10px] font-mono bg-accent text-black w-full h-full flex items-center justify-center">
-                {user.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-            ) : (
-              <User size={17} />
-            )}
-          </button>
         </div>
-      </div>
+      ) : (
+        <div className="px-5 pt-6 pb-4 flex items-center justify-between border-b border-[#1A1A1A]">
+          <div className="flex items-baseline gap-1.5">
+            <div className="font-black text-4xl tracking-[-3.5px] text-white">TRADR</div>
+            <div className="text-[10px] font-mono tracking-[3px] text-accent mt-1.5">PIT</div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-widest text-muted">Balance</div>
+              <div className="font-mono text-lg font-semibold tabular-nums tracking-tight text-accent">
+                ${effectiveBalance.toFixed(2)}
+              </div>
+            </div>
+            {!stripeEnabled && user && (
+              <button
+                onClick={() => deposit(50)}
+                className="text-[10px] px-2 py-1 border border-accent/40 text-accent rounded-lg"
+              >
+                +$50
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('account')}
+              className="w-9 h-9 rounded-full bg-surface border border-card flex items-center justify-center active:bg-overlay overflow-hidden"
+            >
+              {user ? (
+                <div className="text-[10px] font-mono bg-accent text-black w-full h-full flex items-center justify-center">
+                  {user.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+              ) : (
+                <User size={17} />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
-      <div className="flex-1 px-5 pb-28 overflow-y-auto pt-5">
+      <div className={`flex-1 pb-28 overflow-y-auto ${activeTab === 'home' ? 'px-4 pt-1 arena-scroll' : 'px-5 pt-5'}`}>
         
         {/* ARENA TAB */}
         {activeTab === 'home' && (
-          <>
-            {/* MAIN EVENT HERO - shows your active pit when joined */}
-            <div className={`hero p-6 mb-6 ${joinedContests.includes(heroContest.id) ? 'ring-1 ring-accent/20' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="px-3 py-0.5 rounded text-[10px] font-bold tracking-[1.5px] bg-accent text-[#0A0A0A] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#0A0A0A] live-dot" />
-                  LIVE
-                </div>
-                <div className="text-xs text-muted tracking-widest">{heroContest.date.toUpperCase()}</div>
-                {joinedContests.includes(heroContest.id) && heroRank && (
-                  <div className="rank-badge ml-auto pill text-[10px] px-2 py-0.5">#{heroRank} IN PIT</div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <div className="font-black text-[42px] leading-[0.9] tracking-[-3px]">{heroContest.title}</div>
-                {heroContest.badge && (
-                  <span className="pill text-[10px] px-2 py-0.5 self-center">{heroContest.badge}</span>
-                )}
-              </div>
-              <div className="text-secondary mb-1 text-sm leading-snug">
-                {heroContest.tagline || (joinedContests.includes(heroContest.id) ? "YOU'RE ON THE TAPE" : 'ENTER THE ARENA')}
-              </div>
-              <PitRulesStrip contest={heroContest} bellTick={bellTick} />
-
-              {heroContest.assetTheme && (
-                <div className="text-[10px] text-accent font-mono tracking-wide mb-3 px-2 py-1.5 bg-surface border border-accent/20 rounded-lg">
-                  TODAY&apos;S TAPE — {heroContest.assetTheme}
-                </div>
-              )}
-
-              <div className="flex items-end gap-4 mb-5">
-                <div>
-                  <div className="text-[11px] tracking-[1px] text-muted mb-0.5">FIRST PRIZE</div>
-                  <div className="font-mono text-5xl font-bold tracking-[-2.5px] text-accent tabular-nums">${heroContest.firstPrize}</div>
-                </div>
-                <div className="pb-1.5 text-sm text-muted">/ ${heroContest.totalPrizes} pool</div>
-              </div>
-
-              {joinedContests.includes(heroContest.id) && participations[heroContest.id] && (() => {
-                const p = participations[heroContest.id];
-                const liveVal = getPortfolioValue(p);
-                const pnl = liveVal - p.startingValue;
-                const pnlPct = ((liveVal / p.startingValue) - 1) * 100;
-                const flashSym = heroContest.assets[0];
-                const flashClass = priceFlashes[flashSym] === 'up' ? 'pnl-flash-up' : priceFlashes[flashSym] === 'down' ? 'pnl-flash-down' : '';
-                return (
-                  <div className={`mb-4 p-3 rounded-xl bg-surface border border-card ${flashClass}`}>
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <div className="text-[10px] text-muted tracking-widest">YOUR LIVE VALUE</div>
-                        <div className={`font-mono text-2xl text-accent ${priceFlashes[flashSym] ? (priceFlashes[flashSym] === 'up' ? 'text-green-400' : 'text-red-400') : ''}`}>
-                          ${liveVal.toLocaleString()}
-                        </div>
-                      </div>
-                      <div className={`text-sm font-mono ${pnl >= 0 ? 'text-accent' : 'text-red'}`}>
-                        {pnl >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div className="mb-3">
-                <div className="flex justify-between text-[10px] text-muted mb-1">
-                  <span>{heroContest.entries} / {heroContest.maxEntries} traders</span>
-                  <span>{entryFillPct(heroContest)}% full</span>
-                </div>
-                <div className="progress h-1.5">
-                  <div className="progress-fill" style={{ width: `${entryFillPct(heroContest)}%` }} />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mb-5 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="px-3 py-1 bg-surface text-xs border border-card rounded font-medium">
-                    ENTRY <span className="text-accent font-mono">${heroContest.entryFee}</span>
-                  </div>
-                </div>
-                {(() => {
-                  void bellTick;
-                  const ms = hydrated ? bellMsRemaining(heroContest) : null;
-                  const urgent = ms != null && ms > 0 && ms < 5 * 60 * 1000;
-                  const closed = hydrated && !isContestBellOpen(heroContest);
-                  return (
-                    <div className={`pill text-xs px-3 py-1 flex items-center gap-1.5 ${urgent ? 'bell-urgent' : ''} ${closed ? 'opacity-60' : ''}`}>
-                      <Clock size={13} />
-                      {hydrated ? (
-                        closed ? 'BELL RUNG' : (
-                          <BellCountdown contest={heroContest} tick={bellTick} prefix="" placeholder="—" openText={heroContest.timeLeft} />
-                        )
-                      ) : (
-                        '—'
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Assets row */}
-              <div className="flex flex-wrap gap-1.5 mb-5">
-                {heroContest.assets.map((asset, i) => (
-                  <div key={i} className="text-[10px] px-2.5 py-px border border-surface-2 bg-surface font-mono tracking-widest rounded">
-                    {asset}
-                  </div>
-                ))}
-              </div>
-
-              <button 
-                onClick={() => joinedContests.includes(heroContest.id) ? openTradeModal(heroContest.id) : joinArena(heroContest.id)}
-                className="btn btn-primary w-full py-[17px] text-base tracking-[0.5px] active:scale-[0.985]"
-              >
-                {joinedContests.includes(heroContest.id) ? 'OPEN TICKET' : heroContest.entryFee === 0 ? 'RING IN FREE' : 'PAY ENTRY • SEND IT'}
-              </button>
-
-              <div className="flex justify-center gap-4 mt-3 text-[10px] text-muted tracking-widest">
-                <button onClick={() => fetchLivePrices()} className="hover:text-accent active:text-accent">REFRESH LIVE PRICES</button>
-                {joinedContests.includes(heroContest.id) && (
-                  <button onClick={() => { setVaultContestId(heroContest.id); setActiveTab('leaderboard'); }} className="text-accent">VIEW VAULT →</button>
-                )}
-                {!usingServerGame && (
-                  <>
-                    <button onClick={() => simulateMarket(0.8)} className="hover:text-accent">TEST BUMP</button>
-                    <button onClick={() => advanceTime} className="hover:text-accent">ADVANCE TIME</button>
-                  </>
-                )}
-                {usingServerGame && <span className="text-accent">• LIVE MULTIPLAYER</span>}
-              </div>
-            </div>
-
-            {/* Quick Arena Stats — real multiplayer data */}
-            <div className="grid grid-cols-3 gap-3 mb-3">
-              {[
-                { label: "YOUR BATTLES", value: joinedContests.length > 0 ? String(joinedContests.length) : "0" },
-                { label: "YOUR BEST", value: bestPortfolioValue > 0 ? `$${bestPortfolioValue.toLocaleString()}` : "—" },
-                { label: "VAULT RANK", value: heroRank ? `#${heroRank}` : vaultPlayerCount > 0 ? `#${yourRank}` : "—" },
-              ].map((s, i) => (
-                <div key={i} className="bg-card border border-card p-3 rounded-xl text-center hover:border-accent/50 transition-colors">
-                  <div className="text-xl font-mono font-semibold tracking-tighter text-accent">{s.value}</div>
-                  <div className="text-[10px] text-muted tracking-[1px] mt-0.5">{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {!usingServerGame && (
-              <div className="flex gap-2 mb-8">
-                <button onClick={() => fetchLivePrices()} className="flex-1 py-2 text-xs border border-accent text-accent rounded-xl active:bg-surface">REFRESH LIVE PRICES</button>
-                <button onClick={() => simulateMarket(0.9)} className="flex-1 py-2 text-xs border border-card rounded-xl active:bg-surface">TEST BUMP</button>
-                <button onClick={advanceTime} className="flex-1 py-2 text-xs border border-card rounded-xl active:bg-surface">ADVANCE TIME</button>
-              </div>
-            )}
-
-            {/* Global chart viewer for polished experience - opens from Arena or Battles */}
-            {selectedChartSymbol && (
-              <div className="mb-8">
-                <AssetChart 
-                  symbol={selectedChartSymbol} 
-                  currentPrice={prices[selectedChartSymbol] || 0} 
-                  livePrices={prices}
-                  userPosition={Object.values(participations).flatMap(p => p.positions).find(p => p.symbol === selectedChartSymbol) || null}
-                  onClose={() => setSelectedChartSymbol('')}
-                />
-              </div>
-            )}
-
-            {/* Live Pit Feed — arena tape */}
-            {joinedContests.length > 0 && activeVaultContestId && (
-              <PitFeed
-                items={(pitFeedByContest[activeVaultContestId] || []).map((f) => ({
-                  id: f.id,
-                  username: f.username,
-                  side: f.side,
-                  symbol: f.symbol,
-                  shares: f.shares,
-                  price: f.price,
-                  isYou: f.isYou,
-                }))}
-                contestTitle={vaultContest?.title}
-                loading={pitFeedLoading}
-              />
-            )}
-
-            {joinedContests.length > 0 && dynamicVault.length > 0 && (
-              <BeatLeaderCard
-                entries={dynamicVault}
-                yourValue={dynamicVault.find((e) => e.isYou)?.portfolioValue || bestPortfolioValue}
-              />
-            )}
-
-            {/* THE VAULT - real multiplayer rankings */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-3 px-0.5">
-                <div>
-                  <div className="uppercase text-xs tracking-[2px] text-secondary font-medium">THE VAULT</div>
-                  <div className="font-bold text-xl tracking-tight">
-                    {vaultContest?.title || 'Live Rankings'}
-                  </div>
-                  <div className="text-[10px] text-muted mt-0.5">
-                    {vaultPlayerCount} trader{vaultPlayerCount === 1 ? '' : 's'} in pit
-                    {usingServerGame && <span className="text-accent"> • LIVE</span>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => activeVaultContestId && refreshLeaderboard(activeVaultContestId)}
-                  className="text-[10px] px-2 py-1 border border-accent/40 text-accent rounded-lg"
-                >
-                  REFRESH
-                </button>
-              </div>
-
-              {vaultPlayerCount === 0 && (
-                <div className="text-center py-8 text-muted text-sm border border-dashed border-card rounded-2xl mb-4">
-                  Join a contest to appear on the leaderboard
-                </div>
-              )}
-
-              {vaultPlayerCount > 0 && (
-                <>
-                  <div className="podium mb-5">
-                    {[0, 1, 2].map((idx) => {
-                      const entry = dynamicVault[idx];
-                      const place = idx === 0 ? 'gold' : idx === 1 ? 'silver' : 'bronze';
-                      const rankLabel = idx === 0 ? '1ST' : String(idx + 1);
-                      if (!entry) {
-                        return (
-                          <div key={idx} className={`podium-place ${place} opacity-30`}>
-                            <div className="text-xs text-muted mb-1">{rankLabel}</div>
-                            <div className="w-9 h-9 mx-auto rounded-full border border-dashed border-card flex items-center justify-center text-[10px] mb-1.5">—</div>
-                            <div className="text-[10px] text-muted">open slot</div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={entry.userId} className={`podium-place ${place} ${entry.isYou ? 'ring-1 ring-accent/40 rounded-xl' : ''}`}>
-                          <div className="text-xs text-muted mb-1">{rankLabel}</div>
-                          <div className={`w-9 h-9 mx-auto rounded-full ${idx === 0 ? 'bg-accent text-[#0A0A0A]' : entry.isYou ? 'bg-user-card border border-accent' : 'bg-zinc-800'} flex items-center justify-center font-mono text-sm mb-1.5`}>
-                            {entry.username.replace('@', '').slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="font-mono text-xs tracking-tight text-accent">${entry.portfolioValue.toLocaleString()}</div>
-                          <div className="text-[10px] text-muted truncate max-w-[72px] mx-auto">
-                            {entry.username}{entry.isYou ? ' (you)' : ''}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {dynamicVault.find((e) => e.isYou) && (
-                    <div className="bg-user-card border border-accent/30 rounded-2xl p-3 flex items-center justify-between text-sm mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="font-mono text-sm text-muted w-6">#{yourRank}</div>
-                        <div className="font-medium">YOUR RANK</div>
-                      </div>
-                      <div className="font-mono font-semibold text-accent">
-                        ${dynamicVault.find((e) => e.isYou)?.portfolioValue.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
-
-                  {dynamicVault.length > 3 && (
-                    <div className="space-y-1 mb-2">
-                      {dynamicVault.slice(3, 6).map((entry) => (
-                        <div key={entry.userId} className="flex justify-between text-xs py-1 px-1">
-                          <span className="text-muted">#{entry.rank} {entry.username}</span>
-                          <span className="font-mono text-accent">${entry.portfolioValue.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button onClick={() => setActiveTab('leaderboard')} className="w-full text-xs text-accent font-medium py-2 border border-card rounded-xl">
-                    FULL VAULT →
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* OPEN ARENAS */}
-            <div>
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="font-bold tracking-[-0.5px] text-lg">OPEN ARENAS</div>
-              </div>
-
-              {/* New filter style - segmented underline */}
-              <div className="flex gap-6 border-b border-[#222] mb-4 text-sm">
-                {(['all', 'paid', 'free'] as const).map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setSelectedFilter(filter)}
-                    className={`pb-2 font-medium transition-colors ${selectedFilter === filter 
-                      ? 'text-accent border-b-2 border-accent' 
-                      : 'text-secondary'}`}
-                  >
-                    {filter === 'all' ? 'ALL' : filter.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-3.5">
-                {filteredContests.map((contest) => {
-                  const isJoined = joinedContests.includes(contest.id);
-                  const cardRank = rankInContest(contest.id);
-                  const fill = entryFillPct(contest);
-                  return (
-                  <div key={contest.id} className={`arena-card p-5 ${isJoined ? 'arena-card-joined' : ''}`}>
-                    <div className="flex justify-between mb-3">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="font-semibold text-[21px] tracking-[-0.8px] leading-none">{contest.title}</div>
-                          {contest.badge && (
-                            <span className="text-[9px] px-1.5 py-0.5 bg-pill rounded font-bold tracking-wide">{contest.badge}</span>
-                          )}
-                          {isJoined && cardRank && (
-                            <span className="rank-badge text-[10px] px-2 py-0.5 bg-pill rounded-full font-bold">#{cardRank}</span>
-                          )}
-                        </div>
-                        {contest.tagline && (
-                          <div className="text-[11px] text-secondary mt-1 leading-tight">{contest.tagline}</div>
-                        )}
-                        {contest.assetTheme && (
-                          <div className="text-[10px] text-accent/90 font-mono mt-1">{contest.assetTheme}</div>
-                        )}
-                        <div className="text-xs text-muted mt-1 flex items-center gap-2">
-                          {contest.date}
-                          <span className="flex items-center gap-1">
-                            <Clock size={10} />
-                            {contest.endsAt ? <TimeLeftLabel endsAt={contest.endsAt} status={contest.status} tick={bellTick} /> : contest.timeLeft}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right text-sm">
-                        <div className="text-muted text-[10px]">ENTRY</div>
-                        <div className="font-mono font-semibold tabular-nums">${contest.entryFee}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-baseline gap-x-3 mb-3">
-                      <span className="font-mono text-3xl font-bold tracking-[-1.5px] text-accent">${contest.firstPrize}</span>
-                      <span className="text-xs text-muted">TO 1ST • ${contest.totalPrizes} TOTAL</span>
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="flex justify-between text-[10px] text-muted mb-1">
-                        <span>{contest.entries} traders</span>
-                        <span>{fill}% full</span>
-                      </div>
-                      <div className="progress h-1">
-                        <div className="progress-fill" style={{ width: `${fill}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs text-muted">
-                        {contest.assets.slice(0, 3).map((a, idx) => (
-                          <span key={idx} className="font-mono px-1.5 py-px bg-surface border border-card rounded">{a}</span>
-                        ))}
-                        <span className="ml-1">+{Math.max(0, contest.assets.length - 3)}</span>
-                      </div>
-
-                      {isJoined ? (
-                        <div className="flex items-center gap-2">
-                          <div className="text-right text-xs">
-                            <div className="text-muted">YOUR VALUE</div>
-                            <div className={`font-mono text-accent transition-colors ${priceFlashes[contest.assets[0]] ? (priceFlashes[contest.assets[0]] === 'up' ? 'text-green-400' : 'text-red-400') : ''}`}>
-                              ${getPortfolioValue(participations[contest.id]).toLocaleString()}
-                            </div>
-                          </div>
-                          <button onClick={() => openTradeModal(contest.id)} className="btn btn-primary text-xs px-5 py-2 rounded-xl">TRADE</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => joinArena(contest.id)} className="btn btn-primary text-xs px-7 py-2 rounded-xl tracking-[0.5px]">
-                          {contest.entryFee === 0 ? 'RING IN FREE' : 'ENTER PIT'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-                })}
-              </div>
-            </div>
-          </>
+          <ArenaHome
+            pits={arenaPitList}
+            selectedFilter={selectedFilter}
+            onFilterChange={setSelectedFilter}
+            joinedContestIds={joinedContests}
+            getParticipantCount={getLiveParticipantCount}
+            getRank={rankInContest}
+            bellTick={bellTick}
+            hydrated={hydrated}
+            isTradingOpen={isContestTradingOpen}
+            onInfo={setInfoContestId}
+            onEnter={(contest) => {
+              if (!joinedContests.includes(contest.id)) joinArena(contest.id);
+              else if (isContestTradingOpen(contest)) openTradeModal(contest.id);
+              else {
+                setActiveTab('entries');
+                setBattlesSegment('upcoming');
+              }
+            }}
+            onTour={() => {
+              setArenaTourStep(0);
+              setShowArenaTour(true);
+            }}
+            useServerStreak={usingServerGame}
+          />
         )}
 
         {/* MY BATTLES TAB — Active / Upcoming / Completed */}
         {activeTab === 'entries' && (
           <div className="pt-2 tab-content-enter">
-            <div className="mb-4">
-              <div className="uppercase tracking-[2px] text-xs text-secondary">YOUR CONTEST HISTORY</div>
-              <div className="text-3xl font-black tracking-[-1.5px]">MY BATTLES</div>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <div className="uppercase tracking-[2px] text-xs text-secondary">YOUR CONTEST HISTORY</div>
+                <div className="text-3xl font-black tracking-[-1.5px]">MY BATTLES</div>
+              </div>
+              <BattlesTourHelpButton onClick={() => { setBattlesSegment('active'); setBattlesTourStep(0); setShowBattlesTour(true); }} />
             </div>
 
-            <SegmentedControl
-              className="mb-5"
-              value={battlesSegment}
-              onChange={setBattlesSegment}
-              options={[
-                { id: 'active', label: 'ACTIVE', count: activeBattles.length },
-                { id: 'upcoming', label: 'UPCOMING', count: upcomingContests.length },
-                { id: 'completed', label: 'DONE', count: completedBattles.length },
-              ]}
-            />
+            <div data-tour="tabs">
+              <SegmentedControl
+                className="mb-5"
+                value={battlesSegment}
+                onChange={setBattlesSegment}
+                options={[
+                  { id: 'active', label: 'ACTIVE', count: activeBattles.length },
+                  { id: 'upcoming', label: 'UPCOMING', count: scheduledBattles.length + upcomingContests.length },
+                  { id: 'completed', label: 'DONE', count: completedBattles.length },
+                ]}
+              />
+            </div>
 
             {battlesSegment === 'active' && activeBattles.length === 0 && (
+              <EmptyActiveBattles
+                freePit={openingBellContest}
+                onJoinFree={() => {
+                  if (openingBellContest) joinArena(openingBellContest.id);
+                }}
+                onBrowseUpcoming={() => setBattlesSegment('upcoming')}
+              />
+            )}
+
+            {battlesSegment === 'upcoming' && scheduledBattles.length === 0 && upcomingContests.length === 0 && (
               <div className="text-center py-12 text-muted border border-dashed border-card rounded-2xl">
-                No active battles.<br />
-                <button onClick={() => setBattlesSegment('upcoming')} className="text-accent mt-2 text-sm">Browse upcoming arenas →</button>
+                Nothing on deck.<br />Check the Arena for scheduled pits.
               </div>
             )}
 
-            {battlesSegment === 'upcoming' && upcomingContests.length === 0 && (
-              <div className="text-center py-12 text-muted border border-dashed border-card rounded-2xl">
-                You&apos;re in every open arena.<br />New pits drop on the Arena tab.
-              </div>
+            {battlesSegment === 'upcoming' && scheduledBattles.length > 0 && (
+              <div className="text-[10px] tracking-widest text-muted mb-2">YOUR RING-INS — OPENS SOON</div>
             )}
+            {battlesSegment === 'upcoming' && scheduledBattles.map((p) => {
+              const c = contests.find((cc) => cc.id === p.contestId)!;
+              return (
+                <div key={p.contestId} className="arena-card arena-card-joined p-5 mb-4 border border-accent/20">
+                  <div className="flex justify-between mb-2">
+                    <div>
+                      <div className="font-bold text-xl">{c.title}</div>
+                      <div className="text-xs text-muted mt-1 flex items-center gap-2 flex-wrap">
+                        <ScheduledPitChip contest={c} tick={bellTick} />
+                        <span>• ${p.cash.toLocaleString()} cash ready</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono text-lg text-accent">${c.firstPrize}</div>
+                      <div className="text-[10px] text-muted">1ST PRIZE</div>
+                    </div>
+                  </div>
+                  <PitFillBadge contest={c} participantCount={getLiveParticipantCount(c.id)} />
+                  <div className="text-xs text-muted py-2">
+                    You&apos;re rang in. Tape goes live when the pit opens — no trades until then.
+                  </div>
+                </div>
+              );
+            })}
 
             {battlesSegment === 'completed' && completedBattles.length === 0 && (
               <div className="text-center py-12 text-muted border border-dashed border-card rounded-2xl">
@@ -1934,7 +2229,42 @@ export default function TradR() {
               </div>
             )}
 
-            {battlesSegment === 'upcoming' && upcomingContests.map((c) => (
+            {battlesSegment === 'upcoming' && scheduledUpcomingContests.length > 0 && (
+              <div className="text-[10px] tracking-widest text-muted mb-2 mt-4">SCHEDULED ARENAS</div>
+            )}
+            {battlesSegment === 'upcoming' && scheduledUpcomingContests.map((c) => (
+              <div key={c.id} className="arena-card p-5 mb-4 border border-dashed border-accent/25">
+                <div className="flex justify-between mb-2">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="font-bold text-xl">{c.title}</div>
+                      {c.badge && <span className="text-[9px] px-1.5 py-0.5 bg-pill rounded font-bold">{c.badge}</span>}
+                      <ScheduledPitChip contest={c} tick={bellTick} />
+                    </div>
+                    {c.tagline && <div className="text-[11px] text-secondary mt-0.5">{c.tagline}</div>}
+                    <div className="text-xs text-muted flex items-center gap-2 mt-0.5">
+                      <span>{c.entryFee === 0 ? 'FREE' : `$${c.entryFee} entry`}</span>
+                      {c.startsAt && (
+                        <span className="font-mono">
+                          {new Date(c.startsAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-2xl text-accent">${c.firstPrize}</div>
+                    <div className="text-[10px] text-muted">1ST PRIZE</div>
+                  </div>
+                </div>
+                <PitFillBadge contest={c} participantCount={getLiveParticipantCount(c.id)} />
+                <button onClick={() => joinArena(c.id)} className="btn btn-primary w-full py-3 text-sm mt-3">RING IN EARLY</button>
+              </div>
+            ))}
+
+            {battlesSegment === 'upcoming' && liveUpcomingContests.length > 0 && (
+              <div className="text-[10px] tracking-widest text-muted mb-2 mt-4">LIVE NOW</div>
+            )}
+            {battlesSegment === 'upcoming' && liveUpcomingContests.map((c) => (
               <div key={c.id} className="arena-card p-5 mb-4">
                 <div className="flex justify-between mb-2">
                     <div>
@@ -1996,18 +2326,28 @@ export default function TradR() {
               const pnl = liveVal - p.startingValue;
               const pnlPct = ((liveVal / p.startingValue) - 1) * 100;
               const battleRank = rankInContest(p.contestId);
+              const battleBoard = getContestBoard(p.contestId);
 
               return (
-                <div key={p.contestId} className="arena-card arena-card-joined p-5 mb-4">
+                <div key={p.contestId} className="arena-card arena-card-joined p-5 mb-4" data-tour="overview">
                   <div className="flex justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="font-bold text-xl tracking-tight">{c.title}</div>
                         {battleRank && (
                           <span className="rank-badge text-[10px] px-2 py-0.5 bg-pill rounded-full font-bold flex items-center gap-1">
                             <Trophy size={10} /> #{battleRank}
                           </span>
                         )}
+                        <button
+                          type="button"
+                          data-tour="contest-info"
+                          onClick={() => setInfoContestId(c.id)}
+                          className="w-6 h-6 rounded-full border border-card flex items-center justify-center text-muted hover:text-accent"
+                          aria-label="Contest info"
+                        >
+                          <Info size={12} />
+                        </button>
                       </div>
                       <div className="text-xs text-muted flex items-center gap-2 mt-0.5">
                         <span className="flex items-center gap-1">
@@ -2019,24 +2359,39 @@ export default function TradR() {
                         {c.endsAt ? <TimeLeftLabel endsAt={c.endsAt} status={c.status} tick={bellTick} /> : c.timeLeft}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className={`font-mono text-2xl text-accent tabular-nums transition-colors ${priceFlashes[c?.assets?.[0]] ? (priceFlashes[c.assets[0]] === 'up' ? 'text-green-400' : 'text-red-400') : ''}`}>
+                    <div className="arena-live-stats">
+                      <div className="arena-live-value font-mono text-2xl text-accent tabular-nums">
                         ${liveVal.toLocaleString()}
                       </div>
-                      <div className={`text-xs font-mono ${pnl >= 0 ? 'text-accent' : 'text-red'}`}>
-                        {pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} ({pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%)
+                      <div className={`arena-live-pnl text-xs font-mono ${pnl >= 0 ? 'text-accent' : 'text-red'}`}>
+                        {pnl >= 0 ? '+' : '-'}${Math.abs(pnl).toLocaleString()} ({pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%)
                       </div>
                     </div>
                   </div>
 
-                  <div className="mb-3">
+                  <div data-tour="money-zone">
+                    <MoneyZoneBar
+                      entries={battleBoard}
+                      yourValue={liveVal}
+                      firstPrize={c.firstPrize}
+                      hero
+                    />
+                  </div>
+
+                  <PitRulesStrip
+                    contest={c}
+                    bellTick={bellTick}
+                    tradeLimit={tradeLimitByContest[p.contestId]}
+                  />
+
+                  <div className="mb-3" data-tour="stats">
                     <div className="flex justify-between text-[10px] text-muted mb-1">
                       <span>Portfolio vs $100k start</span>
                       <span className={pnl >= 0 ? 'text-accent' : 'text-red'}>{pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%</span>
                     </div>
                     <div className="progress h-1.5">
                       <div
-                        className="progress-fill"
+                        className="progress-fill progress-fill--instant"
                         style={{ width: `${Math.min(100, Math.max(5, 50 + pnlPct * 2))}%` }}
                       />
                     </div>
@@ -2059,12 +2414,10 @@ export default function TradR() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2" data-tour="trade">
                     <button onClick={() => openTradeModal(p.contestId)} className="btn btn-primary flex-1 py-2 text-sm">TRADE</button>
-                    <button onClick={() => setSelectedChartSymbol(c.assets[0])} className="flex-1 py-2 text-sm border border-card rounded-xl">CHART</button>
-                    {c.status !== 'closed' && (
-                      <button onClick={() => settleContest(p.contestId)} className="flex-1 py-2 text-sm border border-card rounded-xl">SETTLE</button>
-                    )}
+                    <button onClick={() => openLeaderboard(p.contestId)} className="flex-1 py-2 text-sm border border-accent/40 text-accent rounded-xl">LEADERBOARD</button>
+                    <button onClick={() => openChart(c.assets[0], p.contestId)} className="flex-1 py-2 text-sm border border-card rounded-xl">CHART</button>
                   </div>
                 </div>
               );
@@ -2086,9 +2439,28 @@ export default function TradR() {
               onChange={setVaultMode}
               options={[
                 { id: 'pit', label: 'LIVE PIT' },
+                { id: 'tape', label: 'TAPE WEEK' },
                 { id: 'global', label: 'GLOBAL' },
               ]}
             />
+
+            {vaultMode === 'tape' && (
+              <>
+                <TapeWeekLeaderboard
+                  entries={tapeLeaderboard}
+                  themeLine={tapeThemeLine}
+                  loading={tapeLoading}
+                />
+                <div className="mt-6">
+                  <button
+                    onClick={() => refreshTapeLeaderboard()}
+                    className="w-full text-xs py-2 rounded-full border border-accent text-accent active:bg-surface"
+                  >
+                    REFRESH TAPE RANKINGS
+                  </button>
+                </div>
+              </>
+            )}
 
             {vaultMode === 'global' && (
               <>
@@ -2175,25 +2547,19 @@ export default function TradR() {
             )}
 
             {vaultMode === 'pit' && activeVaultContestId && joinedContests.includes(activeVaultContestId) && (
-              <>
-                <PitFeed
-                  items={(pitFeedByContest[activeVaultContestId] || []).map((f) => ({
-                    id: f.id,
-                    username: f.username,
-                    side: f.side,
-                    symbol: f.symbol,
-                    shares: f.shares,
-                    price: f.price,
-                    isYou: f.isYou,
-                  }))}
-                  contestTitle={vaultContest?.title}
-                  loading={pitFeedLoading}
-                />
-                <BeatLeaderCard
-                  entries={dynamicVault}
-                  yourValue={dynamicVault.find((e) => e.isYou)?.portfolioValue || 0}
-                />
-              </>
+              <PitFeed
+                items={(pitFeedByContest[activeVaultContestId] || []).map((f) => ({
+                  id: f.id,
+                  username: f.username,
+                  side: f.side,
+                  symbol: f.symbol,
+                  shares: f.shares,
+                  price: f.price,
+                  isYou: f.isYou,
+                }))}
+                contestTitle={vaultContest?.title}
+                loading={pitFeedLoading}
+              />
             )}
 
             {vaultMode === 'pit' && joinedContests.length > 1 && (
@@ -2217,26 +2583,17 @@ export default function TradR() {
               </div>
             )}
 
-            {vaultMode === 'pit' && (dynamicVault.length === 0 ? (
-              <div className="text-center py-12 text-muted">No traders in this contest yet.</div>
-            ) : (
-              <div className="divide-y divide-[#222] text-sm">
-                {dynamicVault.map((entry) => (
-                  <div key={entry.userId} className={`vault-row flex items-center justify-between py-4 px-1 ${entry.isYou ? 'bg-user-card -mx-1 px-2 rounded' : ''}`}>
-                    <div className="flex items-center gap-4">
-                      <div className={`font-mono text-xl w-8 text-right tabular-nums ${entry.rank === 1 ? 'text-accent' : 'text-muted'}`}>#{entry.rank}</div>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${entry.isYou ? 'bg-accent text-black' : 'bg-zinc-800'}`}>
-                        {entry.username.replace('@', '').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="font-medium">{entry.username} {entry.isYou && <span className="text-accent text-xs">(YOU)</span>}</div>
-                    </div>
-                    <div className="font-mono text-lg text-accent tabular-nums tracking-tighter">
-                      ${entry.portfolioValue.toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+            {vaultMode === 'pit' && vaultContest && (
+              dynamicVault.length === 0 ? (
+                <div className="text-center py-12 text-muted">No traders in this contest yet.</div>
+              ) : (
+                <PitLeaderboardPanel
+                  entries={dynamicVault}
+                  contest={vaultContest}
+                  yourValue={dynamicVault.find((e) => e.isYou)?.portfolioValue || bestPortfolioValue}
+                />
+              )
+            )}
 
             {vaultMode === 'pit' && (
             <div className="mt-6 flex gap-2">
@@ -2386,14 +2743,46 @@ export default function TradR() {
                       <Share2 size={18} className="text-accent" />
                       <div className="font-bold text-lg">Invite to the Pit</div>
                     </div>
-                    <p className="text-xs text-muted mb-4">Share your link. Friends get <span className="text-accent">+$5</span> welcome bonus — you earn <span className="text-accent">+$10</span> when they enter the Pit.</p>
-                    <div className="bg-black/40 border border-card rounded-xl p-3 text-xs font-mono text-muted break-all mb-3">
-                      {typeof window !== 'undefined' ? `${window.location.origin}?ref=${profile?.referral_code || 'yourcode'}` : '?ref=yourcode'}
+                    <p className="text-xs text-muted mb-4 leading-relaxed">
+                      Grow the tape. Friends get <span className="text-accent">${REFERRAL_TIERS.friendSignupBonus}</span> on signup —
+                      you earn on their first paid pit and ongoing entry fees.
+                    </p>
+                    {usingServerGame && referralStats && (
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="bg-surface border border-card rounded-xl p-3 text-center">
+                          <div className="text-2xl font-black text-accent">{referralStats.inviteCount}</div>
+                          <div className="text-[10px] text-muted uppercase tracking-wide">Friends invited</div>
+                        </div>
+                        <div className="bg-surface border border-card rounded-xl p-3 text-center">
+                          <div className="text-2xl font-black text-accent">${referralStats.referralEarnings}</div>
+                          <div className="text-[10px] text-muted uppercase tracking-wide">Referral earnings</div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-2 mb-4">
+                      {REFERRAL_HIGHLIGHTS.map((h) => (
+                        <div key={h.title} className="bg-surface border border-card rounded-xl p-3">
+                          <div className="text-xs font-bold text-accent mb-0.5">{h.title}</div>
+                          <div className="text-[11px] text-muted leading-snug">{h.detail}</div>
+                        </div>
+                      ))}
                     </div>
-                    <button onClick={copyReferralLink} className="btn btn-primary w-full py-3 text-sm flex items-center justify-center gap-2">
-                      {referralCopied ? <Check size={16} /> : <Copy size={16} />}
-                      {referralCopied ? 'COPIED!' : 'COPY INVITE LINK'}
-                    </button>
+                    <div className="bg-black/40 border border-card rounded-xl p-3 text-xs font-mono text-muted break-all mb-3">
+                      {referralLink()}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={shareReferralLink} className="btn btn-primary flex-1 py-3 text-sm flex items-center justify-center gap-2">
+                        <Share2 size={16} />
+                        SHARE
+                      </button>
+                      <button onClick={copyReferralLink} className="flex-1 py-3 text-sm border border-accent/40 text-accent rounded-xl flex items-center justify-center gap-2">
+                        {referralCopied ? <Check size={16} /> : <Copy size={16} />}
+                        {referralCopied ? 'COPIED' : 'COPY'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted mt-3 text-center">
+                      Live: signup bonuses + paid-entry rake-back when friends enter pits.
+                    </p>
                   </div>
                 )}
 
@@ -2521,6 +2910,13 @@ export default function TradR() {
         ))}
       </div>
 
+      {/* Global rank-move toast — battles, vault, arena (not inside trade sheet) */}
+      {pitMoment && !tradingContestId && (
+        <div className="pit-moment-toast" role="status">
+          <PitMomentBanner moment={pitMoment} onDismiss={() => setPitMoment(null)} />
+        </div>
+      )}
+
       {/* FIRST-TIME ONBOARDING */}
       {showOnboarding && user && (
         <OnboardingPit
@@ -2546,27 +2942,22 @@ export default function TradR() {
 
       {/* SETTLEMENT RESULTS MODAL */}
       {settlementResult && (
-        <div className="fixed inset-0 bg-black/92 z-[65] flex items-center justify-center p-5">
-          <div className="settlement-card w-full max-w-[380px] bg-card border border-accent/40 rounded-3xl p-6 text-center">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-accent flex items-center justify-center">
-              <Trophy size={28} className="text-[#0A0A0A]" />
+        <div className="fixed inset-0 bg-black/92 z-[65] flex items-center justify-center p-5 overflow-y-auto">
+          <div className={`settlement-card w-full max-w-[380px] bg-card border rounded-3xl p-6 text-center my-auto ${settlementResult.voided ? 'border-red-500/40' : settlementResult.rank === 1 ? 'border-accent/60' : 'border-accent/40'}`}>
+            <div className="text-[10px] tracking-[3px] text-muted uppercase mb-3">
+              {settlementResult.voided ? 'Pit Didn\'t Fill' : 'Bell Rung — Pit Closed'}
             </div>
-            <div className="text-[10px] tracking-[3px] text-muted uppercase mb-1">Bell Rung — Pit Closed</div>
-            <div className="font-black text-2xl tracking-tight mb-4">{settlementResult.contestTitle}</div>
-            <div className="rank-badge font-mono text-6xl font-black text-accent mb-1">#{settlementResult.rank}</div>
-            <div className="text-sm text-muted mb-4">Final portfolio ${settlementResult.portfolioValue.toLocaleString()}</div>
-            {settlementResult.payout > 0 ? (
-              <div className="bg-user-card border border-accent/30 rounded-2xl p-4 mb-5">
-                <div className="text-[10px] text-muted tracking-widest">PRIZE WON</div>
-                <div className="font-mono text-4xl font-bold text-accent">+${settlementResult.payout}</div>
-                <div className="text-[10px] text-muted mt-1">Added to your balance</div>
-              </div>
-            ) : (
-              <div className="bg-surface border border-card rounded-2xl p-4 mb-5 text-sm text-muted">
-                No payout this bell — size up and run it back.
-              </div>
-            )}
-            {settlementResult.settlementPrices && Object.keys(settlementResult.settlementPrices).length > 0 && (
+
+            <SettleShareCard
+              contestTitle={settlementResult.contestTitle}
+              rank={settlementResult.rank}
+              portfolioValue={settlementResult.portfolioValue}
+              startingValue={settlementResult.startingValue}
+              payout={settlementResult.payout}
+              voided={settlementResult.voided}
+              refund={settlementResult.refund}
+            />
+            {!settlementResult.voided && settlementResult.settlementPrices && Object.keys(settlementResult.settlementPrices).length > 0 && (
               <div className="bg-surface border border-card rounded-xl p-3 mb-4 text-left text-xs max-h-32 overflow-y-auto">
                 <div className="text-[10px] tracking-widest text-muted mb-2">BELL SNAPSHOT — FINAL PRICES</div>
                 <div className="grid grid-cols-2 gap-1 font-mono">
@@ -2580,21 +2971,32 @@ export default function TradR() {
               </div>
             )}
             <div className="flex flex-col gap-2">
-              <button
-                onClick={() => {
-                  const id = settlementResult.contestId;
-                  setSettlementResult(null);
-                  openContestRecap(id);
-                }}
-                className="w-full py-3 text-sm border border-accent/40 text-accent rounded-xl"
-              >
-                READ THE TAPE →
+              {!settlementResult.voided && (
+                <button
+                  onClick={() => {
+                    const id = settlementResult.contestId;
+                    dismissSettlement();
+                    openContestRecap(id);
+                  }}
+                  className="btn btn-primary w-full py-3.5 text-sm"
+                >
+                  READ THE TAPE →
+                </button>
+              )}
+              <button onClick={runItBack} className={`w-full py-3.5 text-sm rounded-xl ${settlementResult.voided ? 'btn btn-primary' : 'border border-accent/40 text-accent'}`}>
+                RUN IT BACK →
               </button>
               <button
-                onClick={() => setSettlementResult(null)}
-                className="btn btn-primary w-full py-3.5 text-sm"
+                onClick={shareSettlement}
+                className="w-full py-2.5 text-sm border border-card text-muted rounded-xl flex items-center justify-center gap-2"
               >
-                BACK TO ARENA
+                <Share2 size={14} /> SHARE RESULT
+              </button>
+              <button
+                onClick={dismissSettlement}
+                className="w-full py-2 text-xs text-muted"
+              >
+                Back to arena
               </button>
             </div>
           </div>
@@ -2606,8 +3008,20 @@ export default function TradR() {
         <div className="fixed inset-0 bg-black/90 z-[60] flex items-end">
           <div className="w-full max-w-[420px] mx-auto bg-card border-t border-accent rounded-t-3xl p-5 pb-8 max-h-[92dvh] overflow-y-auto">
             <div className="flex justify-between items-center mb-3">
-              <div>
-                <div className="font-bold text-xl">TRADE • {contests.find(c => c.id === tradingContestId)?.title}</div>
+              <div className="flex-1 min-w-0 pr-2">
+                <div className="flex items-center gap-2">
+                  <div className="font-bold text-xl truncate">TRADE • {contests.find(c => c.id === tradingContestId)?.title}</div>
+                  {tradingContestId && (
+                    <button
+                      type="button"
+                      onClick={() => setInfoContestId(tradingContestId)}
+                      className="w-7 h-7 shrink-0 rounded-full border border-card flex items-center justify-center text-muted hover:text-accent"
+                      aria-label="Contest info"
+                    >
+                      <Info size={13} />
+                    </button>
+                  )}
+                </div>
                 {(() => {
                   void bellTick;
                   const tc = contests.find((c) => c.id === tradingContestId);
@@ -2626,10 +3040,36 @@ export default function TradR() {
               <button onClick={closeTradeModal} className="p-1"><X size={22} /></button>
             </div>
 
+            {tradingContestId && participations[tradingContestId] && (() => {
+              const tc = contests.find((c) => c.id === tradingContestId);
+              const board = getContestBoard(tradingContestId);
+              const liveVal = getPortfolioValue(participations[tradingContestId]);
+              return tc ? (
+                <MoneyZoneBar entries={board} yourValue={liveVal} firstPrize={tc.firstPrize} hero />
+              ) : null;
+            })()}
+
+            {pitMoment && tradingContestId && (
+              <PitMomentBanner moment={pitMoment} onDismiss={() => setPitMoment(null)} />
+            )}
+
             {(() => {
               const tc = contests.find((c) => c.id === tradingContestId);
-              return tc ? <PitRulesStrip contest={tc} bellTick={bellTick} /> : null;
+              return tc ? (
+                <PitRulesStrip
+                  contest={tc}
+                  bellTick={bellTick}
+                  tradeLimit={tradingContestId ? tradeLimitByContest[tradingContestId] : null}
+                />
+              ) : null;
             })()}
+
+            {tradingContestId && tradeLimitByContest[tradingContestId] && !tradeLimitByContest[tradingContestId].unlimited && (
+              <div className="trade-limit-hero">
+                <div className="text-[10px] font-bold tracking-wide text-accent uppercase mb-2">Trades remaining</div>
+                <TradeMeter info={tradeLimitByContest[tradingContestId]} />
+              </div>
+            )}
 
             {isPriceStale(lastPriceUpdate) && (
               <div className="mb-3 text-xs text-red-400 bg-red-950/40 border border-red-900/50 rounded-xl px-3 py-2">
@@ -2669,7 +3109,7 @@ export default function TradR() {
               );
             })()}
 
-            {/* Asset price grid - Click for chart (better than SwapRoyale) */}
+            {/* Asset price grid — tap price to trade, (i) on chip for description */}
             <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
               {(contests.find(c => c.id === tradingContestId)?.assets || []).map(sym => {
                 const currentP = prices[sym];
@@ -2681,12 +3121,14 @@ export default function TradR() {
                     key={sym} 
                     onClick={() => {
                       setTradeSymbol(sym);
-                      setSelectedChartSymbol(sym);  // Open chart for this asset
+                      setSelectedChartSymbol(sym);
                     }}
                     className={`p-3 rounded-xl border cursor-pointer transition-all active:scale-[0.985] ${isSelected ? 'border-accent bg-surface ring-1 ring-accent/30' : 'border-card hover:border-[#333]'} ${priceFlashes[sym] ? (priceFlashes[sym] === 'up' ? 'bg-green-900/30' : 'bg-red-900/30') : ''}`}
                   >
-                    <div className="flex justify-between items-center">
-                      <div className="font-mono font-semibold">{sym}</div>
+                    <div className="flex justify-between items-center gap-1">
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <AssetChip symbol={sym} size="sm" />
+                      </div>
                       <div className={`font-mono text-accent flex items-center gap-1 ${priceFlashes[sym] ? (priceFlashes[sym] === 'up' ? 'text-green-400' : 'text-red-400') : ''}`}>
                         ${currentP?.toFixed(currentP < 10 ? 4 : 2)}
                         {priceFlashes[sym] && <span className="text-[10px]">{priceFlashes[sym] === 'up' ? '↑' : '↓'}</span>}
@@ -2699,18 +3141,33 @@ export default function TradR() {
               })}
             </div>
 
-            {/* Inline Chart - Different & better: Full featured with your entry marker */}
-            {selectedChartSymbol && tradingContestId && (
+            {/* Inline chart — opens with trade ticket, taller than Swap */}
+            {tradingContestId && (selectedChartSymbol || tradeSymbol) && (
               <div className="mb-5">
-                <AssetChart 
-                  symbol={selectedChartSymbol} 
-                  currentPrice={prices[selectedChartSymbol] || 0} 
+                <AssetChart
+                  symbol={selectedChartSymbol || tradeSymbol}
+                  currentPrice={prices[selectedChartSymbol || tradeSymbol] || 0}
                   livePrices={prices}
-                  userPosition={participations[tradingContestId]?.positions.find(p => p.symbol === selectedChartSymbol) || null}
+                  userPosition={
+                    participations[tradingContestId]?.positions.find(
+                      (p) => p.symbol === (selectedChartSymbol || tradeSymbol)
+                    ) || null
+                  }
+                  tall
                   onClose={() => setSelectedChartSymbol('')}
                 />
               </div>
             )}
+
+            {leaderboardByContest[tradingContestId]?.length ? (
+              <button
+                type="button"
+                onClick={() => openLeaderboard(tradingContestId)}
+                className="w-full mb-4 py-2 text-xs border border-accent/40 text-accent rounded-xl"
+              >
+                FULL LEADERBOARD & MONEY LINE →
+              </button>
+            ) : null}
 
             {/* Holdings summary for current symbol */}
             {(() => {
@@ -2741,12 +3198,12 @@ export default function TradR() {
               {[10, 25, 50, 100].map(q => (
                 <button key={q} onClick={() => {
                   const pos = participations[tradingContestId]?.positions.find(p => p.symbol === tradeSymbol);
+                  const price = prices[tradeSymbol] || 1;
                   if (tradeSide === 'sell' && pos) {
-                    setTradeShares(Math.floor(pos.shares * (q/100)).toString());
+                    setTradeShares(sharesForPositionPercent(pos.shares, tradeSymbol, q));
                   } else {
                     const cash = participations[tradingContestId]?.cash || 0;
-                    const max = Math.floor(cash / (prices[tradeSymbol] || 1));
-                    setTradeShares(Math.floor(max * (q/100)).toString());
+                    setTradeShares(sharesForCashPercent(cash, price, tradeSymbol, q));
                   }
                 }} className="flex-1 py-1 text-xs border border-card rounded-lg active:bg-surface">
                   {q}%
@@ -2839,21 +3296,85 @@ export default function TradR() {
 
             {(() => {
               const tc = contests.find((c) => c.id === tradingContestId);
-              const blocked = !tc || !isContestBellOpen(tc) || isPriceStale(lastPriceUpdate) || !prices[tradeSymbol];
+              const limit = tradingContestId ? tradeLimitByContest[tradingContestId] : null;
+              const atLimit = !!(limit && !limit.unlimited && limit.remaining === 0);
+              const marketClosed = tc && tradeSymbol
+                ? !isSymbolTradableNow(tc, tradeSymbol).ok
+                : false;
+              const pitNotOpen = tc ? !isContestTradingOpen(tc) : false;
+              const blocked =
+                !tc ||
+                !isContestBellOpen(tc) ||
+                pitNotOpen ||
+                !prices[tradeSymbol] ||
+                atLimit ||
+                marketClosed;
               return (
                 <button
                   onClick={executeTrade}
                   disabled={blocked}
                   className="btn btn-primary w-full py-4 text-base disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  {blocked && tc && !isContestBellOpen(tc)
-                    ? 'BELL RUNG — PIT CLOSED'
-                    : blocked && isPriceStale(lastPriceUpdate)
-                      ? 'REFRESH PRICES TO TRADE'
-                      : `CONFIRM ${tradeSide.toUpperCase()} ORDER`}
+                  {atLimit
+                    ? 'TRADE LIMIT REACHED'
+                    : pitNotOpen
+                      ? 'PIT OPENS SOON'
+                      : marketClosed
+                        ? 'MARKET CLOSED — PICK CRYPTO'
+                        : blocked && tc && !isContestBellOpen(tc)
+                          ? 'BELL RUNG — PIT CLOSED'
+                          : blocked && isPriceStale(lastPriceUpdate)
+                            ? 'REFRESH PRICES TO TRADE'
+                            : `CONFIRM ${tradeSide.toUpperCase()} ORDER`}
                 </button>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {infoContest && (
+        <ContestInfoModal
+          contest={infoContest}
+          bellTick={bellTick}
+          onClose={() => setInfoContestId(null)}
+        />
+      )}
+
+      {showBattlesTour && activeTab === 'entries' && (
+        <ActiveBattlesTour
+          stepIndex={battlesTourStep}
+          onStepChange={setBattlesTourStep}
+          onClose={() => setShowBattlesTour(false)}
+        />
+      )}
+
+      {showArenaTour && activeTab === 'home' && (
+        <ArenaTour
+          stepIndex={arenaTourStep}
+          onStepChange={setArenaTourStep}
+          onClose={() => setShowArenaTour(false)}
+        />
+      )}
+
+      {joinFlashTitle && (
+        <JoinPitFlash title={joinFlashTitle} onDone={() => setJoinFlashTitle(null)} />
+      )}
+
+      {selectedChartSymbol && !tradingContestId && (
+        <div className="fixed inset-0 bg-black/92 z-[58] flex items-end justify-center p-4 pb-24">
+          <div className="w-full max-w-[420px] max-h-[85dvh] overflow-y-auto">
+            <AssetChart
+              symbol={selectedChartSymbol}
+              currentPrice={prices[selectedChartSymbol] || 0}
+              livePrices={prices}
+              userPosition={
+                chartContestId
+                  ? participations[chartContestId]?.positions.find((p) => p.symbol === selectedChartSymbol) || null
+                  : null
+              }
+              onClose={closeChart}
+            />
           </div>
         </div>
       )}

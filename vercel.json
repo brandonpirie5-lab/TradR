@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/pit-cycle",
-      "schedule": "0 17 * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 }
