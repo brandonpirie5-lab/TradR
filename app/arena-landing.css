@@ -28,21 +28,26 @@
 .arena-mode .pit-chrome {
   position: relative;
   z-index: 2;
-  padding: 16px 18px 14px;
-  border-bottom: 1px solid rgba(234, 179, 8, 0.1);
-  background: linear-gradient(180deg, rgba(234, 179, 8, 0.05) 0%, transparent 100%);
+  padding: 10px 16px 9px;
+  align-items: center;
+  border-bottom: 1px solid rgba(234, 179, 8, 0.07);
+  background: linear-gradient(180deg, rgba(234, 179, 8, 0.035) 0%, transparent 100%);
 }
 
 .arena-mode .pit-chrome-mark {
-  font-size: 20px;
-  letter-spacing: -0.09em;
+  font-size: 17px;
+  letter-spacing: -0.08em;
 }
 
 .arena-mode .pit-chrome-status {
-  margin-top: 5px;
-  font-size: 10px;
+  margin-top: 2px;
+  font-size: 9px;
   font-weight: 600;
-  color: rgba(234, 179, 8, 0.75);
+  color: rgba(234, 179, 8, 0.65);
+}
+
+.arena-mode .pit-chrome .font-mono.text-sm {
+  font-size: 13px;
 }
 
 /* ── Landing shell ── */
@@ -673,7 +678,7 @@
 /* ── Week on the tape (fight card) ── */
 .af-week {
   margin-bottom: 16px;
-  border-radius: 20px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: linear-gradient(160deg, rgba(26, 22, 8, 0.55) 0%, rgba(12, 12, 12, 0.95) 50%);
   overflow: hidden;
@@ -2083,24 +2088,24 @@
 
 .af-week-arena-top {
   margin-top: 0;
-  margin-bottom: 14px;
-  border-color: rgba(234, 179, 8, 0.18);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  margin-bottom: 12px;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
 }
 
 .af-week-ribbon {
-  border-color: rgba(234, 179, 8, 0.28);
-  background: linear-gradient(165deg, rgba(40, 32, 6, 0.75) 0%, rgba(12, 12, 12, 0.98) 55%);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(160deg, rgba(18, 18, 18, 0.92) 0%, rgba(10, 10, 10, 0.98) 100%);
 }
 
 .af-week-themed.af-week-ribbon {
-  border-color: var(--day-accent-mid, rgba(234, 179, 8, 0.28));
+  border-color: var(--day-accent-mid, rgba(255, 255, 255, 0.08));
   background: linear-gradient(
-    165deg,
-    var(--day-accent-soft, rgba(40, 32, 6, 0.75)) 0%,
-    rgba(12, 12, 12, 0.98) 55%
+    160deg,
+    color-mix(in srgb, var(--day-accent, #eab308) 6%, rgba(14, 14, 14, 0.95)) 0%,
+    rgba(10, 10, 10, 0.98) 100%
   );
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 48px var(--day-accent-soft, transparent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
 }
 
 .af-week-toggle-centered {
@@ -2198,6 +2203,104 @@
 
 .af-week-toggle-v3[aria-expanded='true'] {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Compact week ribbon — collapsed ticket */
+.af-week-toggle-v4 {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 10px 13px 11px !important;
+  text-align: left;
+  border-bottom: none;
+}
+
+.af-week-toggle-v4[aria-expanded='true'] {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px !important;
+}
+
+.af-week-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.af-week-kicker-compact {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.af-week-live-pill-compact {
+  padding: 3px 8px;
+  font-size: 9px;
+  gap: 5px;
+}
+
+.af-week-live-pill-compact .af-week-live-dot {
+  width: 5px;
+  height: 5px;
+}
+
+.af-week-expand-hint-compact {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.af-week-toggle-v4 .af-week-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.af-week-toggle-body {
+  min-width: 0;
+}
+
+.af-week-headline-compact {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.af-week-headline-today {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.af-week-inline-pits {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.af-week-inline-pit {
+  color: var(--day-accent, var(--accent));
+  opacity: 0.9;
+}
+
+.af-week-subline {
+  margin: 3px 0 0;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.af-week-arena-top.af-week {
+  border-radius: 14px;
 }
 
 .af-week-toggle-right {

@@ -215,38 +215,44 @@ export default function WeekAheadStrip({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="af-week-toggle af-week-toggle-v3 af-week-toggle-centered"
+        className="af-week-toggle af-week-toggle-v4"
         aria-expanded={expanded}
       >
-        <span className="af-week-kicker af-week-kicker-accent">The week · tap to plan</span>
-        <span className="af-week-headline af-week-headline-hero">
-          <span className="af-week-theme-word">{today.theme.word}</span> today · 2 pits a day
-        </span>
-        <span className="af-week-scale">Mon–Sun · 14 pits on the tape</span>
-
-        {!expanded && today.slate.length > 0 && (
-          <div className="af-week-preview-chips">
-            {today.slate.map((pit) => (
-              <span key={pit.slug} className="af-week-preview-chip">
-                {previewChipLabel(pit)}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="af-week-toggle-footer">
+        <div className="af-week-toggle-bar">
+          <span className="af-week-kicker af-week-kicker-compact">Week</span>
           {liveCount > 0 && (
-            <span className="af-week-live-pill">
+            <span className="af-week-live-pill af-week-live-pill-compact">
               <span className="af-week-live-dot" aria-hidden />
               {liveCount} live
             </span>
           )}
-          <span className="af-week-expand-hint">{expanded ? 'Hide week' : 'View full week'}</span>
+          <span className="af-week-expand-hint af-week-expand-hint-compact">
+            {expanded ? 'Hide' : 'Plan'}
+          </span>
           {expanded ? (
-            <ChevronUp size={18} className="af-week-chevron" />
+            <ChevronUp size={15} className="af-week-chevron" />
           ) : (
-            <ChevronDown size={18} className="af-week-chevron" />
+            <ChevronDown size={15} className="af-week-chevron" />
           )}
+        </div>
+
+        <div className="af-week-toggle-body">
+          <p className="af-week-headline-compact">
+            <span className="af-week-theme-word">{today.theme.word}</span>
+            <span className="af-week-headline-today"> today</span>
+            {!expanded && today.slate.length > 0 && (
+              <span className="af-week-inline-pits">
+                {' · '}
+                {today.slate.map((pit, i) => (
+                  <React.Fragment key={pit.slug}>
+                    {i > 0 && ' · '}
+                    <span className="af-week-inline-pit">{previewChipLabel(pit)}</span>
+                  </React.Fragment>
+                ))}
+              </span>
+            )}
+          </p>
+          {!expanded && <p className="af-week-subline">2 pits · Mon–Sun</p>}
         </div>
       </button>
 
