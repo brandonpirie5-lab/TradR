@@ -5,6 +5,15 @@ import { Users } from 'lucide-react';
 import { Contest } from '../lib/game-types';
 import { getPitFillStatus } from '../lib/contest-fill';
 
+function fillShortLabel(fill: ReturnType<typeof getPitFillStatus>): string {
+  if (fill.isConfirmed) {
+    return `${fill.current}/${fill.minEntries} traders · pit confirmed`;
+  }
+  return fill.needed === 1
+    ? `${fill.current}/${fill.minEntries} · 1 more to run`
+    : `${fill.current}/${fill.minEntries} · ${fill.needed} more to run`;
+}
+
 export default function PitFillBadge({
   contest,
   participantCount,
@@ -12,11 +21,11 @@ export default function PitFillBadge({
 }: {
   contest: Contest;
   participantCount?: number;
-  variant?: 'default' | 'arena';
+  variant?: 'default' | 'arena' | 'arena-inline';
 }) {
   const fill = getPitFillStatus(contest, participantCount);
 
-  if (variant === 'arena') {
+  if (variant === 'arena' || variant === 'arena-inline') {
     const urgencyClass = fill.isConfirmed
       ? 'at-fill-badge-confirmed'
       : fill.urgency === 'critical'
@@ -25,10 +34,16 @@ export default function PitFillBadge({
           ? 'at-fill-badge-warming'
           : 'at-fill-badge-ok';
 
+    const label = variant === 'arena-inline' ? fillShortLabel(fill) : fill.label;
+
     return (
-      <div className={`at-fill-badge ${urgencyClass}`}>
+      <div
+        className={`at-fill-badge ${urgencyClass} ${
+          variant === 'arena-inline' ? 'at-fill-badge-inline' : ''
+        }`}
+      >
         <Users size={11} className="at-fill-badge-icon" aria-hidden />
-        <span>{fill.label}</span>
+        <span>{label}</span>
       </div>
     );
   }

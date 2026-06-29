@@ -216,7 +216,7 @@ export default function WeekAheadStrip({
 
   return (
     <section
-      className="af-week af-week-arena-top af-week-ribbon af-week-themed"
+      className="af-week af-week-arena-top af-week-ribbon af-week-neutral af-week-themed"
       style={themeStyle}
       data-day-index={todayDayIndex}
       data-tour="week-ahead"
@@ -262,9 +262,7 @@ export default function WeekAheadStrip({
                   </span>
                 )}
               </p>
-              <p className="af-week-subline">
-                {today.theme.tapeLabel} · 2 pits · plan week
-              </p>
+              <p className="af-week-subline">2 pits today · tap to plan</p>
             </>
           ) : (
             <p className="af-week-headline-compact">

@@ -14,6 +14,7 @@ import type { ArenaPitItem } from './ArenaHome';
 import WeekAheadStrip from './WeekAheadStrip';
 import InviteFriendsHero from './InviteFriendsHero';
 import { countPaidRanks, getPayoutStructure } from '../lib/pit-payouts';
+import { getPitFillStatus } from '../lib/contest-fill';
 
 const OpeningBellStreakBadge = dynamic(() => import('./OpeningBellStreakBadge'), {
   ssr: false,
@@ -208,10 +209,14 @@ function HeroPitCard({
   const timeLabel = formatPitStartTime(contest, scheduled, hydrated);
   const isLive = !scheduled && timeLabel === 'Live';
   const assets = tape?.assets ?? contest.assets;
+  const fill = getPitFillStatus(contest, participantCount);
+  const showFillUrgency = !isJoined || !fill.isConfirmed;
 
   return (
     <article
-      className={`at-hero af-feature ${isLive ? 'af-feature-urgent' : ''} ${isJoined ? 'at-hero-joined' : ''}`}
+      className={`at-hero af-feature ${isLive ? 'af-feature-urgent' : ''} ${
+        isJoined ? 'at-hero-joined at-hero-compact' : ''
+      }`}
     >
       <div className="af-feature-aurora" aria-hidden />
       <div className="af-feature-border" aria-hidden />
@@ -253,22 +258,53 @@ function HeroPitCard({
             totalPrizes={contest.totalPrizes}
             entryFee={contest.entryFee}
             variant="hero"
-            showHook
+            showHook={!isJoined}
           />
-          <div className="mt-1.5">
-            <PitPoolSummary slug={contest.slug} />
-          </div>
+          {!isJoined && (
+            <div className="mt-1.5">
+              <PitPoolSummary slug={contest.slug} />
+            </div>
+          )}
         </div>
 
-        <PitFillBadge contest={contest} participantCount={participantCount} variant="arena" />
-
-        <div className="at-hero-stats">
-          <div className="at-hero-stat">
-            <span className={`at-hero-stat-val ${contest.entryFee === 0 ? 'at-money-free' : 'at-money-entry'}`}>
-              {entryLabel(contest.entryFee)}
-            </span>
-            <span className="at-hero-stat-lbl">Entry</span>
+        {isJoined ? (
+          <div className="at-hero-you-rail">
+            <div className="at-hero-you-rail-main">
+              <div className="at-hero-joined-rank">
+                <span className="at-hero-joined-label">Your rank</span>
+                <span className="at-hero-joined-val">#{rank ?? '—'}</span>
+              </div>
+              {rank != null && (
+                <PitProjectedPayout
+                  slug={contest.slug}
+                  rank={rank}
+                  className="at-hero-joined-payout"
+                />
+              )}
+            </div>
+            {showFillUrgency && (
+              <PitFillBadge
+                contest={contest}
+                participantCount={participantCount}
+                variant="arena-inline"
+              />
+            )}
           </div>
+        ) : (
+          <PitFillBadge contest={contest} participantCount={participantCount} variant="arena" />
+        )}
+
+        <div className={`at-hero-stats ${isJoined ? 'at-hero-stats-compact' : ''}`}>
+          {!isJoined && (
+            <div className="at-hero-stat">
+              <span
+                className={`at-hero-stat-val ${contest.entryFee === 0 ? 'at-money-free' : 'at-money-entry'}`}
+              >
+                {entryLabel(contest.entryFee)}
+              </span>
+              <span className="at-hero-stat-lbl">Entry</span>
+            </div>
+          )}
           <div className="at-hero-stat">
             <span className="at-hero-stat-val">{participantCount.toLocaleString()}</span>
             <span className="at-hero-stat-lbl">Traders</span>
@@ -283,25 +319,9 @@ function HeroPitCard({
           </div>
         </div>
 
-        <AssetChips assets={assets} max={6} />
+        <AssetChips assets={assets} max={isJoined ? 4 : 6} />
 
-        {isJoined && (
-          <div className="at-hero-joined-strip">
-            <div className="at-hero-joined-rank">
-              <span className="at-hero-joined-label">Your rank</span>
-              <span className="at-hero-joined-val">#{rank ?? '—'}</span>
-            </div>
-            {rank != null && (
-              <PitProjectedPayout
-                slug={contest.slug}
-                rank={rank}
-                className="at-hero-joined-payout"
-              />
-            )}
-          </div>
-        )}
-
-        {!scheduled && isLive && contest.slug !== OPENING_BELL_SLUG && (
+        {!isJoined && !scheduled && isLive && contest.slug !== OPENING_BELL_SLUG && (
           <p className="at-hero-open-hint">{getCanonicalPitOpenLabel(contest.slug)}</p>
         )}
 

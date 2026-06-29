@@ -2051,21 +2051,27 @@ export default function TradR() {
       <SetupBanner />
       {/* Header */}
       {activeTab === 'home' ? (
-        <div className="pit-chrome">
+        <div className="pit-chrome pit-chrome-arena">
           <div className="pit-chrome-left">
             <div className="pit-chrome-mark">
               TRADR<span>PIT</span>
             </div>
             {floorLivePitCount > 0 && (
-              <div className="pit-chrome-status">
-                <span className="pit-chrome-orb" aria-hidden />
-                {floorLivePitCount} live · ${floorPrizePool.toLocaleString()} in prizes
+              <div className="pit-chrome-floor">
+                <span className="pit-chrome-live-pill">
+                  <span className="pit-chrome-orb" aria-hidden />
+                  {floorLivePitCount} live
+                </span>
+                <span className="pit-chrome-prizes">
+                  ${floorPrizePool.toLocaleString()} on the floor
+                </span>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="font-mono text-sm font-semibold tabular-nums text-accent">
-              ${effectiveBalance.toFixed(2)}
+          <div className="pit-chrome-right">
+            <div className="pit-chrome-balance-wrap">
+              <span className="pit-chrome-balance-label">Bankroll</span>
+              <span className="pit-chrome-balance">${effectiveBalance.toFixed(2)}</span>
             </div>
             {!stripeEnabled && user && (
               <button
@@ -2077,14 +2083,15 @@ export default function TradR() {
             )}
             <button
               onClick={() => setActiveTab('account')}
-              className="w-8 h-8 rounded-full bg-surface border border-card flex items-center justify-center active:bg-overlay overflow-hidden"
+              className="pit-chrome-avatar"
+              aria-label="Account"
             >
               {user ? (
-                <div className="text-[10px] font-mono bg-accent text-black w-full h-full flex items-center justify-center">
+                <div className="pit-chrome-avatar-letter">
                   {user.email?.[0]?.toUpperCase() || 'U'}
                 </div>
               ) : (
-                <User size={16} />
+                <User size={15} />
               )}
             </button>
           </div>

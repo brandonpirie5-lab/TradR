@@ -41,20 +41,22 @@ export default function InviteFriendsHero({
   return (
     <section className="at-invite-hero" data-tour="invite-friends">
       <div className="at-invite-hero-glow" aria-hidden />
-      <div className="at-invite-hero-inner">
-        <div className="at-invite-hero-icon" aria-hidden>
-          <Users size={18} />
-        </div>
-        <div className="at-invite-hero-copy">
-          <span className="at-invite-hero-kicker">Grow the tape</span>
-          <h2 className="at-invite-hero-title">{headline}</h2>
-          <p className="at-invite-hero-detail">{detail}</p>
-          {fill && (
-            <p className="at-invite-hero-fill font-mono">
-              {fill.current}/{fill.minEntries} traders
-              {fill.isConfirmed ? ' · pit confirmed' : ` · ${fill.needed} to go`}
-            </p>
-          )}
+      <div className="at-invite-hero-inner at-invite-hero-layout">
+        <div className="at-invite-hero-top">
+          <div className="at-invite-hero-icon" aria-hidden>
+            <Users size={16} />
+          </div>
+          <div className="at-invite-hero-copy">
+            <span className="at-invite-hero-kicker">Grow the tape</span>
+            <h2 className="at-invite-hero-title">{headline}</h2>
+            <p className="at-invite-hero-detail">{detail}</p>
+            {fill && (
+              <p className="at-invite-hero-fill font-mono">
+                {fill.current}/{fill.minEntries} traders
+                {fill.isConfirmed ? ' · pit confirmed' : ` · ${fill.needed} to go`}
+              </p>
+            )}
+          </div>
         </div>
         <div className="at-invite-hero-actions">
           <button type="button" onClick={onCopyLink} className="at-invite-btn at-invite-btn-primary">
