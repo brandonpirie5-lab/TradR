@@ -2170,22 +2170,41 @@ export default function TradR() {
                 setBattlesSegment('upcoming');
                 return;
               }
-              if (usingServerGame) {
-                await ensureWeekSlate();
-                const fresh = await fetchContests();
-                setContests(fresh);
-                const match = findJoinableContestForWeekDay(fresh, slug, dayIndex, joinedContests);
-                if (match) {
-                  joinArena(match.id);
-                  return;
-                }
-              } else {
-                const match = findJoinableContestForWeekDay(contests, slug, dayIndex, joinedContests);
-                if (match) {
-                  joinArena(match.id);
+
+              let match = findJoinableContestForWeekDay(
+                contests,
+                slug,
+                dayIndex,
+                joinedContests
+              );
+
+              if (!match && usingServerGame) {
+                try {
+                  const fresh = await fetchContests();
+                  setContests(fresh);
+                  match = findJoinableContestForWeekDay(
+                    fresh,
+                    slug,
+                    dayIndex,
+                    joinedContests
+                  );
+                } catch (err: unknown) {
+                  const msg = err instanceof Error ? err.message : 'Failed to fetch';
+                  showToast(
+                    msg.includes('fetch') || msg.includes('timed out')
+                      ? 'Could not reach the server — make sure npm run dev is running, then retry'
+                      : msg,
+                    'error'
+                  );
                   return;
                 }
               }
+
+              if (match) {
+                await joinArena(match.id);
+                return;
+              }
+
               showToast('Pit is full or entries closed — check back when the tape drops', 'error');
             }}
             onInfoWeekPit={(slug, dayIndex) => {

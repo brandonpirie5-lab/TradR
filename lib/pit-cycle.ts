@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { activateScheduledContests } from './activate-contests';
+import { closeDuplicateAndExpiredContests } from './contest-pool-cleanup';
 import { rotatePitContests } from './contest-rotation';
 import { settleExpiredContests, type SettleResult } from './settle-contest';
 import { ensureWeekSlateContests } from './week-slate';
@@ -17,6 +18,15 @@ export async function runPitCycle(
   admin: SupabaseClient,
   actingUserId?: string
 ): Promise<PitCycleResult> {
+  try {
+    const cleaned = await closeDuplicateAndExpiredContests(admin);
+    if (cleaned.closedDuplicates + cleaned.closedExpired > 0) {
+      console.info('Pit pool cleanup', cleaned);
+    }
+  } catch (e) {
+    console.warn('Pit pool cleanup failed', e);
+  }
+
   const activated = await activateScheduledContests(admin);
   const settled = await settleExpiredContests(admin, actingUserId);
   const weekSlateRows = await ensureWeekSlateContests(admin);

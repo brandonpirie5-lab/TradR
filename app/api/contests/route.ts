@@ -1,6 +1,7 @@
+import { dedupeContestRows } from '@/lib/contest-pool-cleanup';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { DbContest } from '@/lib/game-types';
-import { runPitCycle } from '@/lib/pit-cycle';
+import { schedulePitCycle } from '@/lib/pit-cycle-lock';
 
 export async function GET() {
   const admin = getSupabaseAdmin();
@@ -9,13 +10,14 @@ export async function GET() {
   }
 
   // Don't block the contest list — cycle can take 30s+ with settle + week spawn.
-  void runPitCycle(admin).catch((e) => {
-    console.warn('Pit cycle on contest load failed', e);
-  });
+  schedulePitCycle(admin);
 
+  const nowIso = new Date().toISOString();
   const { data: contests, error } = await admin
     .from('contests')
     .select('*')
+    .neq('status', 'closed')
+    .gte('ends_at', nowIso)
     .order('id', { ascending: true });
 
   if (error) {
@@ -35,7 +37,8 @@ export async function GET() {
     entryCounts[row.contest_id] = (entryCounts[row.contest_id] || 0) + 1;
   }
 
-  const payload: DbContest[] = (contests || []).map((c) => ({
+  const deduped = dedupeContestRows(contests || []);
+  const payload: DbContest[] = deduped.map((c) => ({
     ...c,
     assets: c.assets || [],
     entry_count: entryCounts[c.id] || 0,

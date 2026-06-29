@@ -69,10 +69,40 @@ export async function ensureWeekSlate(): Promise<void> {
   }
 }
 
+async function fetchWithTimeout(path: string, init: RequestInit = {}, ms = 20000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(path, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out — server may be busy. Try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchContests(): Promise<Contest[]> {
   // Fire-and-forget — server also runs cycle; must not block arena paint.
   void ensureWeekSlate();
-  const res = await fetch('/api/contests');
+
+  let res: Response | null = null;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await fetchWithTimeout('/api/contests');
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  if (!res) {
+    const msg = lastErr instanceof Error ? lastErr.message : 'Failed to fetch';
+    throw new Error(msg);
+  }
   if (!res.ok) throw new Error('Failed to load contests');
   const rows = await res.json();
   return rows.map(dbRowToPitContest);
