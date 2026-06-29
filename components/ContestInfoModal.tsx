@@ -8,6 +8,8 @@ import {
   getContestRules,
   getPrizeBreakdown,
 } from '../lib/contest-rules';
+import { getPayoutStructure } from '../lib/pit-payouts';
+import { PitPoolSummary } from './PitMoneyDisplay';
 import { BellCountdown } from './BellCountdown';
 import { useHydrated } from '../lib/use-hydrated';
 import AssetChip from './AssetChip';
@@ -25,6 +27,7 @@ export default function ContestInfoModal({
   const [showPrizes, setShowPrizes] = useState(false);
   const rules = getContestRules(contest);
   const prizes = getPrizeBreakdown(contest);
+  const payout = getPayoutStructure(contest.slug);
   const window = formatContestWindow(contest);
   void bellTick;
 
@@ -108,8 +111,12 @@ export default function ContestInfoModal({
           className="w-full flex items-center justify-between bg-surface border border-card rounded-2xl p-4 mb-2 text-left"
         >
           <div>
-            <div className="text-[10px] text-muted tracking-widest">PRIZE POOL</div>
+            <div className="text-[10px] text-muted tracking-widest">PRIZE POOL · {payout.label.toUpperCase()}</div>
             <div className="font-mono text-2xl font-bold text-accent">${contest.totalPrizes}</div>
+            <div className="text-[11px] text-secondary mt-0.5">{payout.hook}</div>
+            <div className="mt-1">
+              <PitPoolSummary slug={contest.slug} />
+            </div>
           </div>
           {showPrizes ? <ChevronUp size={18} className="text-muted" /> : <ChevronDown size={18} className="text-muted" />}
         </button>
@@ -147,16 +154,21 @@ export default function ContestInfoModal({
         </div>
 
         {/* Rules */}
-        <div className="bg-surface border border-card rounded-2xl p-4">
-          <div className="text-[10px] tracking-widest text-muted uppercase mb-2">Rules</div>
-          <ul className="space-y-2 text-xs text-secondary leading-relaxed">
-            {rules.rules.map((r, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-accent shrink-0">•</span>
-                <span>{r}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-3">
+          <div className="text-[10px] tracking-widest text-muted uppercase px-0.5">Rules</div>
+          {rules.sections.map((section) => (
+            <div key={section.title} className="bg-surface border border-card rounded-2xl p-4">
+              <div className="text-[11px] font-bold text-accent mb-2">{section.title}</div>
+              <ul className="space-y-2 text-xs text-secondary leading-relaxed">
+                {section.items.map((item, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="text-muted shrink-0 mt-0.5">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       </div>
     </div>

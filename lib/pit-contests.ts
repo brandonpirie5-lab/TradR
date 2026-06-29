@@ -6,20 +6,18 @@ import {
   getContestAssetSchedule,
   resolveContestAssets,
 } from './pit-asset-schedule';
+import { getCatalogPayoutFields } from './pit-payouts';
 import { buildDemoPitWindow } from './pit-schedule';
+import { buildWeekSlateDemoContests } from './week-slate';
 
 export const OPENING_BELL_SLUG = 'opening-bell';
 
-/** TradR Pit contest lineup — slang-forward, funny, unmistakably ours. */
-export const PIT_CONTEST_CATALOG = [
+const CATALOG_SPECS = [
   {
     slug: OPENING_BELL_SLUG,
     title: 'Opening Bell Bloodbath',
     tagline: 'Free entry. Three names a day — tape follows the market week.',
     entryFee: 0,
-    firstPrize: 50,
-    totalPrizes: 200,
-    maxEntries: 500,
     assets: ['BTC', 'ETH', 'SOL'],
     badge: 'FREE TAPE',
   },
@@ -28,9 +26,6 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Liquidation Lounge',
     tagline: '$5 buy-in. Thin book, thick coping. The bell shows no mercy.',
     entryFee: 5,
-    firstPrize: 125,
-    totalPrizes: 500,
-    maxEntries: 120,
     assets: ['SPY', 'QQQ', 'NVDA', 'BTC', 'ETH'],
     badge: 'DAILY REKT',
   },
@@ -39,9 +34,6 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Full Port Disorder',
     tagline: 'Diversification is banned. Size is the whole strategy.',
     entryFee: 10,
-    firstPrize: 200,
-    totalPrizes: 440,
-    maxEntries: 55,
     assets: ['AAPL', 'TSLA', 'BTC', 'SOL', 'DOGE'],
     badge: 'ALL IN',
   },
@@ -50,9 +42,6 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Triple Stack Therapy',
     tagline: 'Three tickers. One fragile trader. Stack or spiral.',
     entryFee: 10,
-    firstPrize: 180,
-    totalPrizes: 400,
-    maxEntries: 80,
     assets: ['NVDA', 'META', 'BTC'],
     badge: '3-BAG MAX',
   },
@@ -61,9 +50,6 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Saturday Slaughterhouse',
     tagline: 'Your plans can wait. Weekend candles hit different.',
     entryFee: 10,
-    firstPrize: 250,
-    totalPrizes: 600,
-    maxEntries: 100,
     assets: ['SPY', 'TSLA', 'BTC', 'ETH', 'SOL'],
     badge: 'OFF-HOURS',
   },
@@ -72,9 +58,6 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Suits vs. Size',
     tagline: 'Macro on SPY. Vibes on SOL. Same bell, different damage.',
     entryFee: 5,
-    firstPrize: 85,
-    totalPrizes: 380,
-    maxEntries: 150,
     assets: ['SPY', 'META', 'BTC', 'ETH', 'SOL'],
     badge: 'RIVAL PIT',
   },
@@ -83,9 +66,6 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Frog & Dog Derby',
     tagline: 'DOGE, PEPE, and chaos — sentiment is the only fundamental.',
     entryFee: 5,
-    firstPrize: 100,
-    totalPrizes: 420,
-    maxEntries: 200,
     assets: ['DOGE', 'PEPE', 'BTC', 'SOL', 'ETH'],
     badge: 'MEME TAPE',
   },
@@ -94,13 +74,16 @@ export const PIT_CONTEST_CATALOG = [
     title: 'Gold Rush Gauntlet',
     tagline: 'GLD, SLV, and macro — when the world panics, metals pump.',
     entryFee: 10,
-    firstPrize: 220,
-    totalPrizes: 520,
-    maxEntries: 80,
     assets: ['GLD', 'SLV', 'SPY', 'BTC', 'ETH'],
     badge: 'METALS',
   },
 ] as const;
+
+/** TradR Pit contest lineup — prize fields synced from pit-payouts structures. */
+export const PIT_CONTEST_CATALOG = CATALOG_SPECS.map((spec) => ({
+  ...spec,
+  ...getCatalogPayoutFields(spec.slug),
+}));
 
 /** Old DB / SwapRoyale-era titles → slug (keeps participations linked). */
 const LEGACY_TITLE_MAP: Record<string, string> = {
@@ -184,8 +167,9 @@ export function enrichContest(contest: Contest, meta?: PitCatalogEntry | null): 
     tagline: m.tagline,
     badge: m.badge,
     entryFee: isLegacy ? m.entryFee : contest.entryFee,
-    firstPrize: isLegacy ? m.firstPrize : contest.firstPrize,
-    totalPrizes: isLegacy ? m.totalPrizes : contest.totalPrizes,
+    firstPrize: m.firstPrize,
+    totalPrizes: m.totalPrizes,
+    maxEntries: m.maxEntries,
     assetTheme: describeContestTape(slug, scheduled.assets, contest.startsAt),
   };
 }
@@ -210,8 +194,13 @@ export function dbRowToPitContest(row: DbContest): Contest {
   };
 }
 
-/** Local/demo fallback when Supabase is offline */
+/** Local/demo fallback when Supabase is offline — full week slate (2 pits × 7 days). */
 export function buildDemoContests(): Contest[] {
+  return buildWeekSlateDemoContests();
+}
+
+/** @deprecated Use buildWeekSlateDemoContests — legacy 8-pit demo */
+export function buildLegacyDemoContests(): Contest[] {
   const now = Date.now();
   const today = new Date();
   return PIT_CONTEST_CATALOG.map((c, i) => {

@@ -1,5 +1,5 @@
 import { LeaderboardEntry } from './game-types';
-import { payoutForRank } from './portfolio';
+import { countPaidRanks, getPayoutStructure, payoutForContestRank } from './pit-payouts';
 
 export type MoneyZoneStatus =
   | 'in-the-money'
@@ -22,18 +22,18 @@ export type MoneyZoneInsight = {
   progressPct: number;
 };
 
-export function getPaidRankCount(entryCount: number): number {
-  return Math.min(3, Math.max(0, entryCount));
+export function getPaidRankCount(slug?: string | null): number {
+  return countPaidRanks(getPayoutStructure(slug));
 }
 
 export function analyzeMoneyZone(
   entries: LeaderboardEntry[],
   yourValue: number,
-  firstPrize: number,
+  slug: string | undefined,
   isYouInList: boolean
 ): MoneyZoneInsight {
   const sorted = [...entries].sort((a, b) => b.portfolioValue - a.portfolioValue);
-  const paidRanks = getPaidRankCount(sorted.length);
+  const paidRanks = getPaidRankCount(slug);
   const you = sorted.find((e) => e.isYou);
   const rank = you?.rank ?? (isYouInList ? null : null);
 
@@ -60,14 +60,15 @@ export function analyzeMoneyZone(
       yourValue,
       cutoffValue: yourValue,
       gapToMoney: 0,
-      projectedPayout: payoutForRank(1, firstPrize),
+      projectedPayout: payoutForContestRank(1, slug),
       headline: 'Solo on the tape',
-      detail: 'You\'re #1 — invite friends before the bell for a real prize fight.',
+      detail: `You're #1 — need ${getPayoutStructure(slug).minEntries} traders minimum for the pit to run.`,
       progressPct: 100,
     };
   }
 
-  const cutoffIdx = Math.max(0, paidRanks - 1);
+  const effectivePaidRanks = Math.min(paidRanks, sorted.length);
+  const cutoffIdx = Math.max(0, effectivePaidRanks - 1);
   const cutoffEntry = sorted[cutoffIdx];
   const cutoffValue = cutoffEntry?.portfolioValue ?? null;
   const youIdx = sorted.findIndex((e) => e.isYou);
@@ -77,7 +78,7 @@ export function analyzeMoneyZone(
     return {
       status: 'unknown',
       rank: null,
-      paidRanks,
+      paidRanks: effectivePaidRanks,
       yourValue,
       cutoffValue,
       gapToMoney: cutoffValue != null ? Math.max(0, cutoffValue - yourValue) : 0,
@@ -88,19 +89,19 @@ export function analyzeMoneyZone(
     };
   }
 
-  const projectedPayout = actualRank ? payoutForRank(actualRank, firstPrize) : 0;
+  const projectedPayout = actualRank ? payoutForContestRank(actualRank, slug) : 0;
   const gapToMoney =
-    cutoffValue != null && actualRank != null && actualRank > paidRanks
+    cutoffValue != null && actualRank != null && actualRank > effectivePaidRanks
       ? Math.max(0, cutoffValue - yourValue + 1)
       : 0;
 
-  if (actualRank != null && actualRank <= paidRanks && projectedPayout > 0) {
+  if (actualRank != null && actualRank <= effectivePaidRanks && projectedPayout > 0) {
     const nextThreat = sorted[actualRank] ?? null;
     const cushion = nextThreat ? yourValue - nextThreat.portfolioValue : 0;
     return {
       status: actualRank === 1 ? 'in-the-money' : 'in-the-money',
       rank: actualRank,
-      paidRanks,
+      paidRanks: effectivePaidRanks,
       yourValue,
       cutoffValue,
       gapToMoney: 0,
@@ -122,14 +123,14 @@ export function analyzeMoneyZone(
     ? `@${nextTarget.username.replace(/^@/, '')}`
     : null;
 
-  const bubbleEntry = sorted[paidRanks];
+  const bubbleEntry = sorted[effectivePaidRanks];
   const bubbleGap = bubbleEntry ? bubbleEntry.portfolioValue - yourValue : gapToMoney;
 
   if (bubbleGap > 0 && bubbleGap <= yourValue * 0.02) {
     return {
       status: 'bubble',
       rank: actualRank,
-      paidRanks,
+      paidRanks: effectivePaidRanks,
       yourValue,
       cutoffValue,
       gapToMoney: bubbleGap,
@@ -137,7 +138,7 @@ export function analyzeMoneyZone(
       headline: 'On the bubble',
       detail: nextTargetLabel
         ? `+$${Math.ceil(bubbleGap).toLocaleString()} to pass ${nextTargetLabel} into the cash zone.`
-        : `+$${Math.ceil(bubbleGap).toLocaleString()} to crack the cash zone (top ${paidRanks}).`,
+        : `+$${Math.ceil(bubbleGap).toLocaleString()} to crack the cash zone (top ${effectivePaidRanks}).`,
       progressPct: Math.min(95, Math.round((yourValue / (cutoffValue || yourValue)) * 100)),
     };
   }
@@ -147,7 +148,7 @@ export function analyzeMoneyZone(
   return {
     status: 'chasing',
     rank: actualRank,
-    paidRanks,
+    paidRanks: effectivePaidRanks,
     yourValue,
     cutoffValue,
     gapToMoney: chaseGap,
@@ -155,9 +156,9 @@ export function analyzeMoneyZone(
     headline: actualRank ? `#${actualRank} — outside the money` : 'Chasing the cash zone',
     detail:
       nextTargetLabel && chaseGap > 0
-        ? `Pass ${nextTargetLabel} (+$${Math.ceil(chaseGap).toLocaleString()}) to climb. #${paidRanks} pays at $${cutoffValue?.toLocaleString() ?? '—'}.`
+        ? `Pass ${nextTargetLabel} (+$${Math.ceil(chaseGap).toLocaleString()}) to climb. #${effectivePaidRanks} pays at $${cutoffValue?.toLocaleString() ?? '—'}.`
         : cutoffValue != null
-          ? `Need +$${Math.ceil(chaseGap).toLocaleString()} to reach #${paidRanks} ($${cutoffValue.toLocaleString()}).`
+          ? `Need +$${Math.ceil(chaseGap).toLocaleString()} to reach #${effectivePaidRanks} ($${cutoffValue.toLocaleString()}).`
           : 'Climb the board before the bell rings.',
     progressPct: cutoffValue
       ? Math.min(90, Math.round((yourValue / cutoffValue) * 100))

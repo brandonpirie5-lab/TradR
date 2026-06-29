@@ -4,22 +4,25 @@ import React from 'react';
 import { DollarSign, TrendingUp, AlertCircle, Crown } from 'lucide-react';
 import { LeaderboardEntry } from '../lib/game-types';
 import { analyzeMoneyZone } from '../lib/money-zone';
+import { getPayoutStructure } from '../lib/pit-payouts';
+import { PitPayoutChip } from './PitMoneyDisplay';
 
 export default function MoneyZoneBar({
   entries,
   yourValue,
-  firstPrize,
+  slug,
   compact = false,
   hero = false,
 }: {
   entries: LeaderboardEntry[];
   yourValue: number;
-  firstPrize: number;
+  slug?: string;
   compact?: boolean;
   /** Full-width emphasis — primary widget on battle card / trade ticket */
   hero?: boolean;
 }) {
-  const insight = analyzeMoneyZone(entries, yourValue, firstPrize, true);
+  const insight = analyzeMoneyZone(entries, yourValue, slug, true);
+  const payout = getPayoutStructure(slug);
 
   const icon =
     insight.status === 'in-the-money' || insight.status === 'solo' ? (
@@ -51,11 +54,12 @@ export default function MoneyZoneBar({
     <div
       className={`money-zone-bar rounded-xl border p-3 mb-3 ${borderClass} ${hero ? 'money-zone-bar--hero' : ''} ${compact && !hero ? 'money-zone-bar--compact p-2.5' : ''}`}
     >
-      {hero && (
-        <div className="money-zone-kicker text-[9px] font-bold tracking-[0.14em] uppercase text-muted mb-2">
-          Money zone
-        </div>
-      )}
+      <div className="money-zone-kicker flex items-center justify-between gap-2 mb-2">
+        <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-muted">
+          {hero ? 'Money zone' : 'Your position'}
+        </span>
+        {slug && <PitPayoutChip slug={slug} />}
+      </div>
       <div className="flex items-start gap-2 mb-2">
         <div className="mt-0.5 shrink-0">{icon}</div>
         <div className="flex-1 min-w-0">
@@ -86,7 +90,9 @@ export default function MoneyZoneBar({
       </div>
       {insight.paidRanks > 0 && (
         <div className="money-zone-footer flex justify-between text-[9px] text-muted mt-1 font-mono">
-          <span>Cash zone: top {insight.paidRanks}</span>
+          <span>
+            {payout.label}: top {insight.paidRanks} · ${payout.totalPool} pool
+          </span>
           <span className={showCutoff ? '' : 'invisible'} aria-hidden={!showCutoff}>
             #{insight.paidRanks} at ${insight.cutoffValue?.toLocaleString() ?? '—'}
           </span>

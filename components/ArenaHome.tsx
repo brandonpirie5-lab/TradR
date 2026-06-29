@@ -3,16 +3,13 @@
 import React from 'react';
 import { Contest } from '../lib/game-types';
 import ArenaTodayBoard from './ArenaTodayBoard';
-import WeekAheadStrip from './WeekAheadStrip';
-import { TourHelpButton as ArenaTourHelpButton } from './ArenaTour';
 
 export type ArenaPitItem = { contest: Contest; scheduled: boolean };
 
 type ArenaHomeProps = {
   pits: ArenaPitItem[];
-  selectedFilter: 'all' | 'paid' | 'free';
-  onFilterChange: (filter: 'all' | 'paid' | 'free') => void;
   joinedContestIds: number[];
+  contests: Contest[];
   getParticipantCount: (contestId: number) => number;
   getRank: (contestId: number) => number | null | undefined;
   bellTick: number;
@@ -20,15 +17,18 @@ type ArenaHomeProps = {
   isTradingOpen: (contest: Contest) => boolean;
   onInfo: (contestId: number) => void;
   onEnter: (contest: Contest) => void;
-  onTour: () => void;
+  onJoinWeekPit: (slug: string, dayIndex: number) => void;
+  onInfoWeekPit: (slug: string, dayIndex: number) => void;
   useServerStreak?: boolean;
+  onCopyReferralLink: () => void;
+  onShareReferralLink: () => void;
+  referralCopied?: boolean;
 };
 
 export default function ArenaHome({
   pits,
-  selectedFilter,
-  onFilterChange,
   joinedContestIds,
+  contests,
   getParticipantCount,
   getRank,
   bellTick,
@@ -36,8 +36,12 @@ export default function ArenaHome({
   isTradingOpen,
   onInfo,
   onEnter,
-  onTour,
+  onJoinWeekPit,
+  onInfoWeekPit,
   useServerStreak = false,
+  onCopyReferralLink,
+  onShareReferralLink,
+  referralCopied = false,
 }: ArenaHomeProps) {
   if (!pits.length) {
     return (
@@ -50,35 +54,12 @@ export default function ArenaHome({
     );
   }
 
-  const selectPitBySlug = (slug: string) => {
-    const match = pits.find((p) => p.contest.slug === slug);
-    if (match) onEnter(match.contest);
-  };
-
   return (
-    <div className="af-landing">
-      <div className="at-toolbar">
-        <div className="af-tabs" role="tablist" aria-label="Filter contests">
-          {(['all', 'paid', 'free'] as const).map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              role="tab"
-              aria-selected={selectedFilter === filter}
-              onClick={() => onFilterChange(filter)}
-              className={`af-tab ${selectedFilter === filter ? 'af-tab-on' : ''}`}
-            >
-              {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </button>
-          ))}
-        </div>
-        <ArenaTourHelpButton onClick={onTour} />
-      </div>
-
+    <div className="af-landing af-landing-v3">
       <ArenaTodayBoard
         pits={pits}
-        selectedFilter={selectedFilter}
         joinedContestIds={joinedContestIds}
+        contests={contests}
         getParticipantCount={getParticipantCount}
         getRank={getRank}
         bellTick={bellTick}
@@ -86,10 +67,13 @@ export default function ArenaHome({
         isTradingOpen={isTradingOpen}
         onInfo={onInfo}
         onEnter={onEnter}
+        onJoinWeekPit={onJoinWeekPit}
+        onInfoWeekPit={onInfoWeekPit}
         useServerStreak={useServerStreak}
+        onCopyReferralLink={onCopyReferralLink}
+        onShareReferralLink={onShareReferralLink}
+        referralCopied={referralCopied}
       />
-
-      <WeekAheadStrip onPitSelect={selectPitBySlug} />
     </div>
   );
 }

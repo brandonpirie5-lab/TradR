@@ -14,8 +14,7 @@ type ArenaTapeLeadersProps = {
 export default function ArenaTapeLeaders({ contest, entries, onViewAll }: ArenaTapeLeadersProps) {
   if (entries.length < 2) return null;
 
-  void contest;
-  const cutRank = getPaidRankCount(entries.length);
+  const cutRank = getPaidRankCount(contest.slug);
   const top = entries.slice(0, 3);
   const you = entries.find((e) => e.isYou);
   const showYou = you && !top.some((e) => e.isYou);

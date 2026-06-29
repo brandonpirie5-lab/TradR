@@ -44,6 +44,7 @@ import {
 import { Position, getPortfolioValue as calcPortfolioValue } from '../lib/portfolio';
 import {
   fetchContests,
+  ensureWeekSlate,
   refreshGameState,
   joinContestApi,
   executeTradeApi,
@@ -80,7 +81,14 @@ import { getOpeningBellStreak, recordOpeningBellDay, applyServerStreakSnapshot }
 import TapeWeekLeaderboard from '../components/TapeWeekLeaderboard';
 import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
 import { getContestRules } from '../lib/contest-rules';
+import { payoutForContestRank } from '../lib/pit-payouts';
+import PitMoneyDisplay, { PitProjectedPayout } from '../components/PitMoneyDisplay';
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
+import {
+  findContestForWeekPit,
+  findJoinableContestForWeekDay,
+  hasJoinedWeekDayPit,
+} from '../lib/week-join';
 import { isSymbolTradableNow } from '../lib/market-hours';
 import {
   affordableBuyShares,
@@ -164,7 +172,7 @@ function isCrypto(sym: string) {
 export default function TradR() {
   // UI state
   const [activeTab, setActiveTab] = useState<'home' | 'entries' | 'leaderboard' | 'account'>('home');
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'paid' | 'free'>('all');
+
 
   // Fully functioning state
   const [contests, setContests] = useState<Contest[]>(initialContests);
@@ -187,6 +195,7 @@ export default function TradR() {
   // Settlement results modal (SwapRoyale-style payout screen)
   const [settlementResult, setSettlementResult] = useState<{
     contestId: number;
+    contestSlug?: string;
     rank: number;
     payout: number;
     refund?: number;
@@ -602,6 +611,7 @@ export default function TradR() {
               if (settledContest?.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(settledContest);
               setSettlementResult({
                 contestId: yours.id,
+                contestSlug: settledContest?.slug,
                 rank: yours.yourRank ?? 0,
                 payout: yours.yourPayout ?? 0,
                 refund: yours.yourRefund,
@@ -1189,7 +1199,7 @@ export default function TradR() {
       username: e.username,
       finalRank: e.rank,
       finalValue: e.portfolioValue,
-      payout: e.rank === 1 ? (c?.firstPrize || 0) : 0,
+      payout: payoutForContestRank(e.rank, c?.slug),
       cash: e.isYou ? p?.cash : undefined,
       positions: e.isYou ? p?.positions : undefined,
       isYou: e.isYou,
@@ -1207,12 +1217,6 @@ export default function TradR() {
   const isJoinableContest = (c: Contest) =>
     (c.status === 'open' || c.status === 'active') && isJoinAllowed(c);
 
-  const matchesHomeFilter = (c: Contest) => {
-    if (selectedFilter === 'paid') return c.entryFee > 0;
-    if (selectedFilter === 'free') return c.entryFee === 0;
-    return true;
-  };
-
   const todayDayIndex = new Date().getDay();
 
   const arenaPitPriority = (c: Contest, scheduled: boolean) => {
@@ -1228,7 +1232,7 @@ export default function TradR() {
   for (const c of contests) {
     if (c.status !== 'open' && c.status !== 'active') continue;
     if (isStaleOpeningBellContest(c, canonicalOpeningBell)) continue;
-    if (!matchesHomeFilter(c)) continue;
+
 
     const scheduled = isJoinableContest(c) && !isContestStarted(c);
     const live = isContestTradingOpen(c);
@@ -1730,6 +1734,7 @@ export default function TradR() {
         if (c.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(c);
         setSettlementResult({
           contestId,
+          contestSlug: c.slug,
           rank: result.rank,
           payout: result.payout,
           refund: result.refund,
@@ -1781,6 +1786,7 @@ export default function TradR() {
       autoSettledIdsRef.current.add(contestId);
       setSettlementResult({
         contestId,
+        contestSlug: c.slug,
         rank: 0,
         payout: 0,
         refund,
@@ -1798,10 +1804,7 @@ export default function TradR() {
     }
 
     const rank = dynamicVault.findIndex((v) => v.isYou) + 1 || 5;
-    let payout = 0;
-    if (rank === 1) payout = c.firstPrize;
-    else if (rank === 2) payout = Math.floor(c.firstPrize * 0.38);
-    else if (rank === 3) payout = Math.floor(c.firstPrize * 0.18);
+    const payout = payoutForContestRank(rank, c.slug);
 
     const newBal = userBalance + payout;
     setUserBalance(newBal);
@@ -1821,6 +1824,7 @@ export default function TradR() {
     if (c.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(c);
     setSettlementResult({
       contestId,
+      contestSlug: c.slug,
       rank,
       payout,
       contestTitle: c.title,
@@ -2130,8 +2134,6 @@ export default function TradR() {
         {activeTab === 'home' && (
           <ArenaHome
             pits={arenaPitList}
-            selectedFilter={selectedFilter}
-            onFilterChange={setSelectedFilter}
             joinedContestIds={joinedContests}
             getParticipantCount={getLiveParticipantCount}
             getRank={rankInContest}
@@ -2147,11 +2149,49 @@ export default function TradR() {
                 setBattlesSegment('upcoming');
               }
             }}
-            onTour={() => {
-              setArenaTourStep(0);
-              setShowArenaTour(true);
+            contests={contests}
+            onJoinWeekPit={async (slug, dayIndex) => {
+              if (hasJoinedWeekDayPit(contests, joinedContests, slug, dayIndex)) {
+                const live =
+                  findJoinableContestForWeekDay(contests, slug, dayIndex, []) ??
+                  findContestForWeekPit(contests, slug, dayIndex);
+                if (live && joinedContests.includes(live.id) && isContestTradingOpen(live)) {
+                  openTradeModal(live.id);
+                  return;
+                }
+                setActiveTab('entries');
+                setBattlesSegment('upcoming');
+                return;
+              }
+              if (usingServerGame) {
+                await ensureWeekSlate();
+                const fresh = await fetchContests();
+                setContests(fresh);
+                const match = findJoinableContestForWeekDay(fresh, slug, dayIndex, joinedContests);
+                if (match) {
+                  joinArena(match.id);
+                  return;
+                }
+              } else {
+                const match = findJoinableContestForWeekDay(contests, slug, dayIndex, joinedContests);
+                if (match) {
+                  joinArena(match.id);
+                  return;
+                }
+              }
+              showToast('Pit is full or entries closed — check back when the tape drops', 'error');
+            }}
+            onInfoWeekPit={(slug, dayIndex) => {
+              const match =
+                findContestForWeekPit(contests, slug, dayIndex) ??
+                findJoinableContestForWeekDay(contests, slug, dayIndex, joinedContests);
+              if (match) setInfoContestId(match.id);
+              else showToast('Contest details unlock when this pit opens', 'error');
             }}
             useServerStreak={usingServerGame}
+            onCopyReferralLink={copyReferralLink}
+            onShareReferralLink={shareReferralLink}
+            referralCopied={referralCopied}
           />
         )}
 
@@ -2210,9 +2250,14 @@ export default function TradR() {
                         <span>• ${p.cash.toLocaleString()} cash ready</span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-mono text-lg text-accent">${c.firstPrize}</div>
-                      <div className="text-[10px] text-muted">1ST PRIZE</div>
+                    <div className="text-right shrink-0">
+                      <PitMoneyDisplay
+                        slug={c.slug}
+                        totalPrizes={c.totalPrizes}
+                        entryFee={c.entryFee}
+                        variant="stacked"
+                        showHook={false}
+                      />
                     </div>
                   </div>
                   <PitFillBadge contest={c} participantCount={getLiveParticipantCount(c.id)} />
@@ -2251,9 +2296,14 @@ export default function TradR() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-mono text-2xl text-accent">${c.firstPrize}</div>
-                    <div className="text-[10px] text-muted">1ST PRIZE</div>
+                  <div className="text-right shrink-0">
+                    <PitMoneyDisplay
+                      slug={c.slug}
+                      totalPrizes={c.totalPrizes}
+                      entryFee={c.entryFee}
+                      variant="stacked"
+                      showHook={false}
+                    />
                   </div>
                 </div>
                 <PitFillBadge contest={c} participantCount={getLiveParticipantCount(c.id)} />
@@ -2278,9 +2328,14 @@ export default function TradR() {
                         <span>• {c.entryFee === 0 ? 'FREE' : `$${c.entryFee} entry`}</span>
                       </div>
                     </div>
-                  <div className="text-right">
-                    <div className="font-mono text-2xl text-accent">${c.firstPrize}</div>
-                    <div className="text-[10px] text-muted">1ST PRIZE</div>
+                  <div className="text-right shrink-0">
+                    <PitMoneyDisplay
+                      slug={c.slug}
+                      totalPrizes={c.totalPrizes}
+                      entryFee={c.entryFee}
+                      variant="stacked"
+                      showHook={false}
+                    />
                   </div>
                 </div>
                 <div className="progress h-1 mb-4">
@@ -2301,9 +2356,11 @@ export default function TradR() {
                     </div>
                     <div className="text-right">
                       <div className="rank-badge font-mono text-3xl font-black text-accent">#{p.finalRank || '—'}</div>
-                      {(p.payout || 0) > 0 && (
-                        <div className="text-sm font-mono text-accent">+${p.payout}</div>
-                      )}
+                      {(p.payout || 0) > 0 ? (
+                        <div className="text-sm font-mono text-accent font-bold">+${p.payout}</div>
+                      ) : p.finalRank ? (
+                        <PitProjectedPayout slug={c?.slug} rank={p.finalRank} className="text-xs" />
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex justify-between text-sm mb-3">
@@ -2339,6 +2396,9 @@ export default function TradR() {
                             <Trophy size={10} /> #{battleRank}
                           </span>
                         )}
+                        {battleRank && (
+                          <PitProjectedPayout slug={c.slug} rank={battleRank} />
+                        )}
                         <button
                           type="button"
                           data-tour="contest-info"
@@ -2369,11 +2429,13 @@ export default function TradR() {
                     </div>
                   </div>
 
+                  <PitFillBadge contest={c} participantCount={getLiveParticipantCount(c.id)} />
+
                   <div data-tour="money-zone">
                     <MoneyZoneBar
                       entries={battleBoard}
                       yourValue={liveVal}
-                      firstPrize={c.firstPrize}
+                      slug={c.slug}
                       hero
                     />
                   </div>
@@ -2950,6 +3012,7 @@ export default function TradR() {
 
             <SettleShareCard
               contestTitle={settlementResult.contestTitle}
+              contestSlug={settlementResult.contestSlug}
               rank={settlementResult.rank}
               portfolioValue={settlementResult.portfolioValue}
               startingValue={settlementResult.startingValue}
@@ -3029,11 +3092,22 @@ export default function TradR() {
                   const ms = hydrated ? bellMsRemaining(tc) : null;
                   const closed = hydrated && !isContestBellOpen(tc);
                   return (
-                    <div className={`text-[10px] mt-0.5 font-mono ${closed ? 'text-red-400' : ms != null && ms < 300000 ? 'text-red-400 bell-urgent' : 'text-muted'}`}>
-                      {!hydrated ? '—' : closed ? '🔔 BELL RUNG — TRADING CLOSED' : (
-                        <BellCountdown contest={tc} tick={bellTick} prefix="BELL IN " placeholder="PIT OPEN" openText="PIT OPEN" />
-                      )}
-                    </div>
+                    <>
+                      <div className={`text-[10px] mt-0.5 font-mono ${closed ? 'text-red-400' : ms != null && ms < 300000 ? 'text-red-400 bell-urgent' : 'text-muted'}`}>
+                        {!hydrated ? '—' : closed ? '🔔 BELL RUNG — TRADING CLOSED' : (
+                          <BellCountdown contest={tc} tick={bellTick} prefix="BELL IN " placeholder="PIT OPEN" openText="PIT OPEN" />
+                        )}
+                      </div>
+                      <div className="mt-1.5">
+                        <PitMoneyDisplay
+                          slug={tc.slug}
+                          totalPrizes={tc.totalPrizes}
+                          entryFee={tc.entryFee}
+                          variant="compact"
+                          showSuffix={false}
+                        />
+                      </div>
+                    </>
                   );
                 })()}
               </div>
@@ -3045,7 +3119,7 @@ export default function TradR() {
               const board = getContestBoard(tradingContestId);
               const liveVal = getPortfolioValue(participations[tradingContestId]);
               return tc ? (
-                <MoneyZoneBar entries={board} yourValue={liveVal} firstPrize={tc.firstPrize} hero />
+                <MoneyZoneBar entries={board} yourValue={liveVal} slug={tc.slug} hero />
               ) : null;
             })()}
 

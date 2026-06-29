@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { X, Trophy, ChevronDown, ChevronUp, ScrollText } from 'lucide-react';
 import type { ContestRecap } from '../lib/game-types';
+import { countPaidRanks, getPayoutStructure } from '../lib/pit-payouts';
+import PitMoneyDisplay, { PitPayoutChip } from './PitMoneyDisplay';
 
 export default function ContestRecapModal({
   recap,
@@ -15,6 +17,8 @@ export default function ContestRecapModal({
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   const winner = recap.standings.find((s) => s.finalRank === 1);
+  const payout = getPayoutStructure(recap.contest.slug);
+  const paidRanks = countPaidRanks(payout);
   const tradesByUser = recap.trades.reduce<Record<string, typeof recap.trades>>((acc, t) => {
     if (!acc[t.userId]) acc[t.userId] = [];
     acc[t.userId].push(t);
@@ -33,7 +37,20 @@ export default function ContestRecapModal({
             <div>
               <div className="text-[10px] tracking-[3px] text-muted uppercase">Tape at the Bell</div>
               <div className="font-black text-2xl tracking-tight">{recap.contest.title}</div>
-              <div className="text-xs text-muted mt-0.5">{recap.standings.length} in the pit • {recap.trades.length} tickets filled</div>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <PitPayoutChip slug={recap.contest.slug} />
+                <PitMoneyDisplay
+                  slug={recap.contest.slug}
+                  totalPrizes={recap.contest.totalPrizes}
+                  entryFee={recap.contest.entryFee}
+                  variant="compact"
+                  showChip={false}
+                  showSuffix={false}
+                />
+              </div>
+              <div className="text-xs text-muted mt-1">
+                {recap.standings.length} traders · top {paidRanks} paid · {recap.trades.length} tickets filled
+              </div>
             </div>
             <button onClick={onClose} className="p-1"><X size={22} /></button>
           </div>
@@ -116,19 +133,28 @@ export default function ContestRecapModal({
           )}
 
           {tab === 'standings' &&
-            recap.standings.map((s) => {
+            recap.standings.map((s, idx) => {
               const expanded = expandedUser === s.userId;
               const userTrades = tradesByUser[s.userId] || [];
+              const inMoney = (s.finalRank ?? 0) <= paidRanks;
+              const isCutLine = s.finalRank === paidRanks;
               const placeClass = s.finalRank === 1 ? 'border-accent/50 bg-user-card' : 'border-card';
+              const showMoneyCut = s.finalRank === paidRanks + 1;
 
               return (
-                <div key={s.userId} className={`border rounded-2xl overflow-hidden mb-3 ${placeClass} ${s.isYou ? 'ring-1 ring-accent/30' : ''}`}>
+                <React.Fragment key={s.userId}>
+                  {showMoneyCut && (
+                    <div className="recap-money-cut text-[10px] text-accent font-mono text-center py-2 mb-2 border-y border-accent/30">
+                      MONEY LINE — top {paidRanks} paid
+                    </div>
+                  )}
+                <div className={`border rounded-2xl overflow-hidden mb-3 ${placeClass} ${s.isYou ? 'ring-1 ring-accent/30' : ''} ${isCutLine ? 'border-accent/40' : ''}`}>
                   <button
                     onClick={() => setExpandedUser(expanded ? null : s.userId)}
                     className="w-full p-4 flex items-center justify-between text-left active:bg-surface/50"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`font-mono text-lg font-bold w-8 ${s.finalRank === 1 ? 'text-accent' : 'text-muted'}`}>
+                      <div className={`font-mono text-lg font-bold w-8 ${s.finalRank === 1 ? 'text-accent' : inMoney ? 'text-accent/80' : 'text-muted'}`}>
                         #{s.finalRank}
                       </div>
                       <div>
@@ -136,8 +162,14 @@ export default function ContestRecapModal({
                           {s.username}
                           {s.isYou && <span className="text-[10px] text-accent">YOU</span>}
                           {s.finalRank === 1 && <Trophy size={12} className="text-accent" />}
+                          {inMoney && s.payout > 0 && (
+                            <span className="text-[10px] font-mono text-accent font-bold">+${s.payout}</span>
+                          )}
                         </div>
                         <div className="text-xs text-muted font-mono">${s.finalValue.toLocaleString()}</div>
+                        {!inMoney && (
+                          <div className="text-[10px] text-muted">Outside the money</div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -181,6 +213,7 @@ export default function ContestRecapModal({
                     </div>
                   )}
                 </div>
+                </React.Fragment>
               );
             })}
         </div>

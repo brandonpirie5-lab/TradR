@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     })),
     rotation: cycle.rotation,
     spawned: cycle.spawned,
+    weekSlate: cycle.weekSlate,
   });
 }
 

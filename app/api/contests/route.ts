@@ -8,11 +8,10 @@ export async function GET() {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  try {
-    await runPitCycle(admin);
-  } catch (e) {
+  // Don't block the contest list — cycle can take 30s+ with settle + week spawn.
+  void runPitCycle(admin).catch((e) => {
     console.warn('Pit cycle on contest load failed', e);
-  }
+  });
 
   const { data: contests, error } = await admin
     .from('contests')

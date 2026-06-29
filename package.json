@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "seed:pit": "npx tsx scripts/seed-pit-pool.ts",
+    "seed:pits": "npx tsx scripts/seed-pit-pool.ts --all",
+    "bots:run": "npx tsx scripts/run-pit-bots.ts",
+    "bots:once": "npx tsx scripts/run-pit-bots.ts --once",
+    "week:spawn": "npx tsx scripts/spawn-week-slate.ts",
     "db:migrate": "npx tsx scripts/run-sql-migration.ts",
     "db:cleanup": "npx tsx scripts/close-legacy-contests.ts",
     "db:status": "npx tsx scripts/check-pit-traders.ts"

@@ -33,6 +33,7 @@ export function getPortfolioValue(
   return Math.round(value);
 }
 
+/** @deprecated Use payoutForContestRank from pit-payouts */
 export function payoutForRank(rank: number, firstPrize: number): number {
   if (rank === 1) return firstPrize;
   if (rank === 2) return Math.floor(firstPrize * 0.38);

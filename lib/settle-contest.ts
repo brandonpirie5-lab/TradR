@@ -1,7 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getContestRules } from './contest-rules';
 import { fetchMarketPrices } from './market-prices';
-import { getPortfolioValue, normalizePositions, payoutForRank } from './portfolio';
+import { payoutForContestRank } from './pit-payouts';
+import { getPortfolioValue, normalizePositions } from './portfolio';
 
 export type SettleResult = {
   contestId: number;
@@ -173,7 +174,7 @@ export async function settleContestById(
   for (let i = 0; i < ranked.length; i++) {
     const row = ranked[i];
     const rank = i + 1;
-    const payout = payoutForRank(rank, Number(contest.first_prize));
+    const payout = payoutForContestRank(rank, contest.slug);
 
     await admin
       .from('participations')

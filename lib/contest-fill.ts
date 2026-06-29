@@ -25,10 +25,10 @@ export function getPitFillStatus(
   else if (!isConfirmed && needed <= 5) urgency = 'warming';
 
   const label = isConfirmed
-    ? `${current} traders in — pit is live`
+    ? `${current}/${minEntries} traders — pit confirmed, prizes lock at the bell`
     : needed === 1
-      ? `1 more trader needed to confirm`
-      : `${needed} more traders needed to confirm`;
+      ? `${current}/${minEntries} traders — 1 more needed or pit voids${contest.entryFee > 0 ? ' + refunds' : ''}`
+      : `${current}/${minEntries} traders — ${needed} more needed or pit voids${contest.entryFee > 0 ? ' + refunds' : ''}`;
 
   return { minEntries, current, needed, isConfirmed, label, urgency };
 }

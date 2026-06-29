@@ -58,7 +58,20 @@ async function authFetch(path: string, options: RequestInit = {}) {
   return data;
 }
 
+export async function ensureWeekSlate(): Promise<void> {
+  try {
+    await fetch('/api/contests/ensure-week', {
+      method: 'POST',
+      headers: { 'x-tradr-client': 'arena' },
+    });
+  } catch {
+    /* non-fatal — contests may already exist */
+  }
+}
+
 export async function fetchContests(): Promise<Contest[]> {
+  // Fire-and-forget — server also runs cycle; must not block arena paint.
+  void ensureWeekSlate();
   const res = await fetch('/api/contests');
   if (!res.ok) throw new Error('Failed to load contests');
   const rows = await res.json();

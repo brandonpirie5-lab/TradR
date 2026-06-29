@@ -1,4 +1,4 @@
-import { PIT_CONTEST_CATALOG } from './pit-contests';
+import { OPENING_BELL_SLUG, PIT_CONTEST_CATALOG } from './pit-contests';
 import { ASSET_POOLS, DAY_NAMES, getPoolForSlugDay } from './pit-asset-schedule';
 import {
   FEATURED_PIT_BY_DAY,
@@ -12,9 +12,15 @@ import {
 export type WeekContestPreview = {
   slug: string;
   title: string;
+  tagline: string;
   badge: string;
   entryFee: number;
   firstPrize: number;
+  totalPrizes: number;
+  payoutLabel: string;
+  payoutHook: string;
+  minEntries: number;
+  maxEntries: number;
   poolLabel: string;
   poolId: string;
   assetCount: number;
@@ -32,6 +38,8 @@ export type DayPreview = {
   tapeOfDay: { label: string; assets: string[] };
   mainEvent: WeekContestPreview | null;
   coMainEvent: WeekContestPreview | null;
+  /** Daily fight card: free Opening Bell + today's main paid pit */
+  slate: WeekContestPreview[];
   contests: WeekContestPreview[];
   supportingCount: number;
 };
@@ -39,9 +47,15 @@ export type DayPreview = {
 function buildContestPreview(
   slug: string,
   title: string,
+  tagline: string,
   badge: string,
   entryFee: number,
   firstPrize: number,
+  totalPrizes: number,
+  payoutLabel: string,
+  payoutHook: string,
+  minEntries: number,
+  maxEntries: number,
   dayIndex: number
 ): WeekContestPreview {
   const tape = getContestTapeInfo(slug, dayIndex)!;
@@ -49,9 +63,15 @@ function buildContestPreview(
   return {
     slug,
     title,
+    tagline,
     badge,
     entryFee,
     firstPrize,
+    totalPrizes,
+    payoutLabel,
+    payoutHook,
+    minEntries,
+    maxEntries,
     poolLabel: tape.poolLabel,
     poolId: tape.poolId,
     assetCount: tape.assetCount,
@@ -70,7 +90,20 @@ export function getWeekPreview(anchor: Date = new Date()): DayPreview[] {
     const tapeAssets = [...ASSET_POOLS[theme.tapePoolId]];
 
     const contests = PIT_CONTEST_CATALOG.map((c) =>
-      buildContestPreview(c.slug, c.title, c.badge, c.entryFee, c.firstPrize, dayIndex)
+      buildContestPreview(
+        c.slug,
+        c.title,
+        c.tagline,
+        c.badge,
+        c.entryFee,
+        c.firstPrize,
+        c.totalPrizes,
+        c.payoutLabel,
+        c.payoutHook,
+        c.minEntries,
+        c.maxEntries,
+        dayIndex
+      )
     ).sort((a, b) => {
       const order = (f: WeekContestPreview['featured']) => (f === 'main' ? 0 : f === 'co' ? 1 : 2);
       const diff = order(a.featured) - order(b.featured);
@@ -88,6 +121,9 @@ export function getWeekPreview(anchor: Date = new Date()): DayPreview[] {
 
     const supportingCount = contests.filter((c) => !c.featured).length;
 
+    const openingBell = contests.find((c) => c.slug === OPENING_BELL_SLUG) ?? null;
+    const slate = [openingBell, mainEvent].filter((c): c is WeekContestPreview => c != null);
+
     return {
       dayIndex,
       dayName,
@@ -96,6 +132,7 @@ export function getWeekPreview(anchor: Date = new Date()): DayPreview[] {
       tapeOfDay: { label: theme.tapeLabel, assets: tapeAssets.slice(0, 5) },
       mainEvent,
       coMainEvent,
+      slate,
       contests,
       supportingCount,
     };

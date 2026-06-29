@@ -8,6 +8,7 @@ import { useHydrated } from '../lib/use-hydrated';
 import { BellCountdown } from './BellCountdown';
 import TradeMeter from './TradeMeter';
 import type { TradeLimitInfo } from '../lib/trade-limits';
+import PitMoneyDisplay, { PitPoolSummary } from './PitMoneyDisplay';
 
 function pitHook(contest: Contest, rules: ReturnType<typeof getContestRules>): string | null {
   const generic = rules.rules.find(
@@ -39,6 +40,19 @@ export default function PitRulesStrip({
 
   return (
     <div className="pit-rules-strip mb-3">
+      <div className="pit-rules-money-row mb-2">
+        <PitMoneyDisplay
+          slug={contest.slug}
+          totalPrizes={contest.totalPrizes}
+          entryFee={contest.entryFee}
+          variant="compact"
+          showHook={false}
+          showSuffix={false}
+        />
+        <div className="mt-1">
+          <PitPoolSummary slug={contest.slug} />
+        </div>
+      </div>
       {hook && (
         <p className="pit-rules-hook text-[11px] text-accent/90 font-semibold leading-snug mb-2">
           {hook}
