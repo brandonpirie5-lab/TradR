@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import { ArrowRight, Info } from 'lucide-react';
 import { Contest } from '../lib/game-types';
 import { OPENING_BELL_SLUG } from '../lib/pit-contests';
-import PitMoneyDisplay, { PitPoolSummary } from './PitMoneyDisplay';
+import PitMoneyDisplay, { PitPoolSummary, PitProjectedPayout } from './PitMoneyDisplay';
+import PitFillBadge from './PitFillBadge';
 import { formatPitStartTime, getCanonicalPitOpenLabel } from '../lib/pit-schedule';
 import { getContestTapeInfo, FEATURED_PIT_BY_DAY } from '../lib/tape-week';
 import { TimeLeftLabel } from './BellCountdown';
@@ -155,6 +156,7 @@ export default function ArenaTodayBoard({
             item={freeItem}
             tapeLabel={freeTape?.poolLabel ?? 'Free trio'}
             isJoined={joinedContestIds.includes(freeItem.contest.id)}
+            rank={getRank(freeItem.contest.id)}
             participantCount={getParticipantCount(freeItem.contest.id)}
             isTradingOpen={isTradingOpen(freeItem.contest)}
             onInfo={() => onInfo(freeItem.contest.id)}
@@ -208,7 +210,9 @@ function HeroPitCard({
   const assets = tape?.assets ?? contest.assets;
 
   return (
-    <article className={`at-hero af-feature ${isLive ? 'af-feature-urgent' : ''}`}>
+    <article
+      className={`at-hero af-feature ${isLive ? 'af-feature-urgent' : ''} ${isJoined ? 'at-hero-joined' : ''}`}
+    >
       <div className="af-feature-aurora" aria-hidden />
       <div className="af-feature-border" aria-hidden />
       <div className="af-feature-inner at-hero-inner">
@@ -256,6 +260,8 @@ function HeroPitCard({
           </div>
         </div>
 
+        <PitFillBadge contest={contest} participantCount={participantCount} variant="arena" />
+
         <div className="at-hero-stats">
           <div className="at-hero-stat">
             <span className={`at-hero-stat-val ${contest.entryFee === 0 ? 'at-money-free' : 'at-money-entry'}`}>
@@ -279,15 +285,31 @@ function HeroPitCard({
 
         <AssetChips assets={assets} max={6} />
 
-        {isJoined && rank != null && (
-          <p className="at-hero-rank">Your rank #{rank}</p>
+        {isJoined && (
+          <div className="at-hero-joined-strip">
+            <div className="at-hero-joined-rank">
+              <span className="at-hero-joined-label">Your rank</span>
+              <span className="at-hero-joined-val">#{rank ?? '—'}</span>
+            </div>
+            {rank != null && (
+              <PitProjectedPayout
+                slug={contest.slug}
+                rank={rank}
+                className="at-hero-joined-payout"
+              />
+            )}
+          </div>
         )}
 
         {!scheduled && isLive && contest.slug !== OPENING_BELL_SLUG && (
           <p className="at-hero-open-hint">{getCanonicalPitOpenLabel(contest.slug)}</p>
         )}
 
-        <button type="button" onClick={onEnter} className="at-cta at-hero-cta">
+        <button
+          type="button"
+          onClick={onEnter}
+          className={`at-cta at-hero-cta ${isJoined ? 'at-hero-cta-in' : ''} ${isJoined && tradingOpen ? 'at-hero-cta-trade' : ''}`}
+        >
           <span>{ctaLabel(contest, scheduled, isJoined, tradingOpen)}</span>
           <ArrowRight size={18} strokeWidth={2.5} />
         </button>
@@ -300,6 +322,7 @@ function FreeStrip({
   item,
   tapeLabel,
   isJoined,
+  rank,
   participantCount,
   isTradingOpen: tradingOpen,
   onInfo,
@@ -309,6 +332,7 @@ function FreeStrip({
   item: ArenaPitItem;
   tapeLabel: string;
   isJoined: boolean;
+  rank?: number | null;
   participantCount: number;
   isTradingOpen: boolean;
   onInfo: () => void;
@@ -324,7 +348,14 @@ function FreeStrip({
         <div className="at-free-strip-text">
           <span className="at-free-strip-name">{contest.title}</span>
           <span className="at-free-strip-meta">
-            {tapeLabel} · {traderCount(participantCount)}
+            {tapeLabel} · <span className="at-free-strip-pool">${contest.totalPrizes} pool</span> ·{' '}
+            {traderCount(participantCount)}
+            {isJoined && rank != null && (
+              <>
+                {' '}
+                · <span className="at-free-strip-rank">#{rank}</span>
+              </>
+            )}
           </span>
         </div>
         <OpeningBellStreakBadge useServer={useServerStreak} />

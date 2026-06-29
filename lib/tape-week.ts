@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { PIT_CONTEST_CATALOG } from './pit-contests';
 import {
   ASSET_POOLS,
@@ -86,6 +87,32 @@ export const FEATURED_PIT_BY_DAY: Record<number, { main: string; coMain?: string
   5: { main: 'full-send', coMain: 'the-liquidation' },
   6: { main: 'weekend-carnage', coMain: 'meme-mayhem' },
 };
+
+/** Per-weekday accent RGB for ribbon / today block theming */
+export const DAY_THEME_ACCENTS: Record<number, string> = {
+  0: '125, 211, 252', // Recovery — cool blue
+  1: '234, 179, 8', // Desk — gold
+  2: '192, 132, 252', // Degen — violet
+  3: '251, 146, 60', // Macro — amber
+  4: '56, 189, 248', // Tech — cyan
+  5: '248, 113, 113', // Chaos — coral
+  6: '239, 68, 68', // Carnage — red
+};
+
+export function getDayThemeAccentRgb(dayIndex: number): string {
+  return DAY_THEME_ACCENTS[dayIndex] ?? DAY_THEME_ACCENTS[1];
+}
+
+export function getDayThemeStyle(dayIndex: number): CSSProperties {
+  const rgb = getDayThemeAccentRgb(dayIndex);
+  return {
+    '--day-accent-rgb': rgb,
+    '--day-accent': `rgb(${rgb})`,
+    '--day-accent-soft': `rgba(${rgb}, 0.1)`,
+    '--day-accent-mid': `rgba(${rgb}, 0.22)`,
+    '--day-accent-glow': `rgba(${rgb}, 0.35)`,
+  } as React.CSSProperties;
+}
 
 export function getDayTheme(dayIndex: number): DayTheme {
   return DAY_THEMES[dayIndex] ?? DAY_THEMES[1];

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { Contest } from '../lib/game-types';
 import { getTodayPreview, getWeekPreview, type WeekContestPreview } from '../lib/weekly-preview';
 import { getWeekJoinState } from '../lib/week-join';
+import { getDayThemeStyle } from '../lib/tape-week';
 import PitMoneyDisplay from './PitMoneyDisplay';
 
 const WEEK_INTRO_KEY = 'tradr_week_intro_shown';
@@ -189,6 +190,8 @@ export default function WeekAheadStrip({
   const fightCardRef = useRef<HTMLDivElement>(null);
   const today = getTodayPreview(anchor);
   const week = getWeekPreview(anchor);
+  const todayDayIndex = anchor.getDay();
+  const themeStyle = getDayThemeStyle(todayDayIndex);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -203,7 +206,12 @@ export default function WeekAheadStrip({
   };
 
   return (
-    <section className="af-week af-week-arena-top af-week-ribbon" data-tour="week-ahead">
+    <section
+      className="af-week af-week-arena-top af-week-ribbon af-week-themed"
+      style={themeStyle}
+      data-day-index={todayDayIndex}
+      data-tour="week-ahead"
+    >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -212,7 +220,7 @@ export default function WeekAheadStrip({
       >
         <span className="af-week-kicker af-week-kicker-accent">The week · tap to plan</span>
         <span className="af-week-headline af-week-headline-hero">
-          {today.theme.word} today · 2 pits a day
+          <span className="af-week-theme-word">{today.theme.word}</span> today · 2 pits a day
         </span>
         <span className="af-week-scale">Mon–Sun · 14 pits on the tape</span>
 
@@ -253,7 +261,8 @@ export default function WeekAheadStrip({
                 key={day.dayName}
                 ref={day.isToday ? todayRef : undefined}
                 id={day.isToday ? 'af-week-today' : undefined}
-                className={`af-week-day-block ${day.isToday ? 'af-week-day-block-today' : ''}`}
+                className={`af-week-day-block ${day.isToday ? 'af-week-day-block-today af-week-day-themed' : ''}`}
+                style={day.isToday ? getDayThemeStyle(day.dayIndex) : undefined}
               >
                 <div className="af-week-row-head">
                   <div className="af-week-row-day">
