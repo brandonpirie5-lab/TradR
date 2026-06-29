@@ -43,11 +43,21 @@ export default function SetupBanner() {
           Current URL: {health.projectUrl}
         </p>
       )}
+      <p className="text-[10px] text-red-100/70 mb-2">
+        <span className="font-mono">.env.local</span> is local only — Vercel does <strong>not</strong> auto-update from git.
+        After fixing keys, restart <span className="font-mono">npm run dev</span> locally or redeploy on Vercel.
+      </p>
       <ol className="text-[11px] text-red-100/80 list-decimal list-inside space-y-1 mb-3">
-        <li>Open <span className="text-accent">supabase.com/dashboard</span> → your project</li>
-        <li>Settings → API → copy <strong>Project URL</strong> + keys</li>
-        <li>Paste into <span className="font-mono">.env.local</span> (local) or <span className="font-mono">Vercel → Environment Variables</span> (production) — then <strong>Redeploy</strong></li>
-        <li>Run <span className="font-mono">supabase-schema.sql</span> in SQL Editor</li>
+        <li>Supabase dashboard → Settings → API Keys</li>
+        <li>
+          <span className="font-mono">sb_publishable_…</span> →{' '}
+          <span className="font-mono">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</span>
+        </li>
+        <li>
+          <span className="font-mono">sb_secret_…</span> → <span className="font-mono">SUPABASE_SERVICE_ROLE_KEY</span>{' '}
+          (never the publishable key)
+        </li>
+        <li>Same URL + keys in Vercel env vars for production, then redeploy</li>
       </ol>
       <button onClick={check} className="text-xs px-3 py-1 border border-red-700 text-red-300 rounded-lg hover:bg-red-900/30">
         Re-check connection
