@@ -2279,6 +2279,16 @@
   color: var(--text-secondary);
 }
 
+.af-week-headline-lead {
+  color: var(--day-accent, var(--accent));
+  font-weight: 800;
+}
+
+.af-week-headline-muted {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .af-week-inline-pits {
   font-size: 12px;
   font-weight: 600;
@@ -2286,8 +2296,8 @@
 }
 
 .af-week-inline-pit {
-  color: var(--day-accent, var(--accent));
-  opacity: 0.9;
+  color: var(--text);
+  font-weight: 700;
 }
 
 .af-week-subline {

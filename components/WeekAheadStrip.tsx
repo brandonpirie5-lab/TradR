@@ -26,10 +26,19 @@ function featuredLabel(slug: string, role: WeekContestPreview['featured']): stri
   return null;
 }
 
-function previewChipLabel(preview: WeekContestPreview): string {
-  if (preview.slug === 'opening-bell') return 'Free bell';
-  if (preview.entryFee === 0) return preview.title.split(' ')[0];
-  return preview.title.split(' ').slice(0, 2).join(' ');
+const RIBBON_PIT_SHORT: Record<string, string> = {
+  'opening-bell': 'Opening Bell',
+  'the-liquidation': 'Liquidation',
+  'full-send': 'Full Send',
+  'triple-stack': 'Triple Stack',
+  'weekend-carnage': 'Weekend Carnage',
+  'tradfi-vs-degen': 'Suits vs. Size',
+  'meme-mayhem': 'Meme Mayhem',
+  'gold-rush': 'Gold Rush',
+};
+
+function ribbonPitLabel(preview: WeekContestPreview): string {
+  return RIBBON_PIT_SHORT[preview.slug] ?? preview.title.split(' ').slice(0, 2).join(' ');
 }
 
 function WeekPitRow({
@@ -237,22 +246,32 @@ export default function WeekAheadStrip({
         </div>
 
         <div className="af-week-toggle-body">
-          <p className="af-week-headline-compact">
-            <span className="af-week-theme-word">{today.theme.word}</span>
-            <span className="af-week-headline-today"> today</span>
-            {!expanded && today.slate.length > 0 && (
-              <span className="af-week-inline-pits">
-                {' · '}
-                {today.slate.map((pit, i) => (
-                  <React.Fragment key={pit.slug}>
-                    {i > 0 && ' · '}
-                    <span className="af-week-inline-pit">{previewChipLabel(pit)}</span>
-                  </React.Fragment>
-                ))}
-              </span>
-            )}
-          </p>
-          {!expanded && <p className="af-week-subline">2 pits · Mon–Sun</p>}
+          {!expanded ? (
+            <>
+              <p className="af-week-headline-compact">
+                <span className="af-week-headline-lead">Today</span>
+                {today.slate.length > 0 && (
+                  <span className="af-week-inline-pits">
+                    {' · '}
+                    {today.slate.map((pit, i) => (
+                      <React.Fragment key={pit.slug}>
+                        {i > 0 && ' · '}
+                        <span className="af-week-inline-pit">{ribbonPitLabel(pit)}</span>
+                      </React.Fragment>
+                    ))}
+                  </span>
+                )}
+              </p>
+              <p className="af-week-subline">
+                {today.theme.tapeLabel} · 2 pits · plan week
+              </p>
+            </>
+          ) : (
+            <p className="af-week-headline-compact">
+              <span className="af-week-headline-lead">This week</span>
+              <span className="af-week-headline-muted"> · 14 pits on the tape</span>
+            </p>
+          )}
         </div>
       </button>
 
@@ -273,7 +292,7 @@ export default function WeekAheadStrip({
                 <div className="af-week-row-head">
                   <div className="af-week-row-day">
                     <span className="af-week-row-name">{day.dayName.slice(0, 3)}</span>
-                    <span className="af-week-row-theme">{day.theme.word}</span>
+                    <span className="af-week-row-theme">{day.theme.tapeLabel}</span>
                   </div>
                   {day.isToday && <span className="af-week-today-pill">Today</span>}
                 </div>
