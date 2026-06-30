@@ -5,9 +5,15 @@ import React, { useMemo } from 'react';
 type ArenaTapeTickerProps = {
   symbols: string[];
   highlightSymbols?: string[];
+  /** Quieter styling for below-the-hero placement */
+  subtle?: boolean;
 };
 
-export default function ArenaTapeTicker({ symbols, highlightSymbols = [] }: ArenaTapeTickerProps) {
+export default function ArenaTapeTicker({
+  symbols,
+  highlightSymbols = [],
+  subtle = false,
+}: ArenaTapeTickerProps) {
   const highlight = useMemo(() => new Set(highlightSymbols), [highlightSymbols]);
 
   const track = useMemo(() => {
@@ -15,13 +21,13 @@ export default function ArenaTapeTicker({ symbols, highlightSymbols = [] }: Aren
     return [...base, ...base];
   }, [symbols]);
 
-  const durationSec = Math.max(36, symbols.length * 2.4);
+  const durationSec = subtle ? Math.max(72, symbols.length * 4.8) : Math.max(36, symbols.length * 2.4);
   const onFloorCount = symbols.filter((s) => highlight.has(s)).length;
 
   if (!symbols.length) return null;
 
   return (
-    <div className="at-tape-ticker" aria-hidden>
+    <div className={`at-tape-ticker ${subtle ? 'at-tape-ticker-subtle' : ''}`} aria-hidden>
       <span className="at-tape-ticker-label">On the tape</span>
       <div className="at-tape-ticker-viewport">
         <div className="at-tape-ticker-fade at-tape-ticker-fade-left" />

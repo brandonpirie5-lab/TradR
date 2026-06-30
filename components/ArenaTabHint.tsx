@@ -25,7 +25,11 @@ export default function ArenaTabHint() {
   return (
     <div className="at-tab-hint">
       <p className="at-tab-hint-text">
-        <strong>Arena</strong> = join pits here. <strong>Battles</strong> = trade your tickets.
+        <strong>Arena</strong> — pick a pit and ring in with one tap.
+        <br />
+        <strong>Battles</strong> — trade your ticket when the bell opens.
+        <br />
+        <strong>Vault</strong> — see who&apos;s winning on the tape.
       </p>
       <button type="button" onClick={dismiss} className="at-tab-hint-dismiss" aria-label="Dismiss">
         <X size={14} />

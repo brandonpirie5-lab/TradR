@@ -1424,6 +1424,34 @@
   background: linear-gradient(270deg, rgba(8, 8, 8, 0.95) 0%, transparent 100%);
 }
 
+.at-tape-ticker-subtle {
+  margin: 16px 0 0;
+  padding: 4px 8px;
+  opacity: 0.72;
+  border-color: rgba(255, 255, 255, 0.03);
+  background: transparent;
+}
+
+.at-tape-ticker-subtle .at-tape-ticker-label {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  opacity: 0.65;
+}
+
+.at-tape-ticker-subtle .at-tape-ticker-item {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.at-tape-ticker-subtle .at-tape-ticker-item-today {
+  color: rgba(234, 179, 8, 0.38);
+}
+
+.at-tape-ticker-subtle .at-tape-ticker-count {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.14);
+}
+
 /* Live hero — opening bell pulse */
 .at-hero-live .at-hero-bell-ring {
   position: absolute;
@@ -1694,9 +1722,30 @@
   text-align: center;
 }
 
+.at-hero-details {
+  margin: 10px 0 0;
+}
+
+.at-hero-details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.at-hero-details-body {
+  padding: 8px 4px 0;
+}
+
 .at-hero-tagline {
-  margin: 0 0 8px;
-  font-size: 12px;
+  margin: 0 0 6px;
+  font-size: 11px;
   line-height: 1.4;
   color: var(--text-secondary);
   text-align: center;
@@ -1706,8 +1755,8 @@
 }
 
 .at-hero-tape {
-  margin: 0 0 10px;
-  font-size: 11px;
+  margin: 0 0 8px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
   text-align: center;
@@ -1719,7 +1768,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: 0 0 14px;
+  margin: 0 0 4px;
 }
 
 .at-hero-assets button {
@@ -1883,7 +1932,7 @@
 }
 
 .at-hero-cta {
-  margin-top: 4px;
+  margin-top: 0;
   padding: 16px 22px;
   font-size: 15px;
   letter-spacing: 0.02em;

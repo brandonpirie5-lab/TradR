@@ -20,8 +20,8 @@ import VaultTab from '../components/VaultTab';
 import ProfileTab from '../components/ProfileTab';
 import TradeSheet from '../components/TradeSheet';
 
-import ActiveBattlesTour, { TourHelpButton as BattlesTourHelpButton, shouldShowActiveBattlesTour } from '../components/ActiveBattlesTour';
-import ArenaTour, { shouldShowArenaTour } from '../components/ArenaTour';
+import ActiveBattlesTour, { TourHelpButton as BattlesTourHelpButton } from '../components/ActiveBattlesTour';
+import ArenaTour from '../components/ArenaTour';
 import { REFERRAL_TIERS } from '../lib/referral-program';
 import { useHydrated } from '../lib/use-hydrated';
 import { supabase, isSupabaseConfigured, Profile } from '../lib/supabase';
@@ -272,17 +272,7 @@ export default function TradR() {
     serverSettledShownRef,
   } = game;
 
-  useEffect(() => {
-    if (activeTab === 'entries' && shouldShowActiveBattlesTour()) {
-      setBattlesSegment('active');
-      setBattlesTourStep(0);
-      setShowBattlesTour(true);
-    }
-    if (activeTab === 'home' && shouldShowArenaTour()) {
-      setShowArenaTour(true);
-      setArenaTourStep(0);
-    }
-  }, [activeTab]);
+
 
   const infoContest = infoContestId != null ? contests.find((c) => c.id === infoContestId) : null;
 

@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useCalmLiveStats } from '../lib/use-calm-live-stats';
-import { ArrowRight, Info } from 'lucide-react';
-import { Contest } from '../lib/game-types';
+import { ArrowRight, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Contest, LeaderboardEntry } from '../lib/game-types';
+import { formatFloorTraders, formatFloorTradersShort } from '../lib/format-floor-count';
 import { OPENING_BELL_SLUG } from '../lib/pit-contests';
 import { pitActionLabel, PIT_DEFAULT_TAGLINE } from '../lib/pit-cta';
 import PitMoneyDisplay from './PitMoneyDisplay';
@@ -15,8 +16,6 @@ import type { ArenaPitItem } from './ArenaHome';
 import WeekAheadStrip from './WeekAheadStrip';
 import ArenaTapeTicker from './ArenaTapeTicker';
 import ArenaTapeLeaders from './ArenaTapeLeaders';
-import { formatFloorTraders, formatFloorTradersShort } from '../lib/format-floor-count';
-import type { LeaderboardEntry } from '../lib/game-types';
 import { getOrderedArenaTapeSymbols } from '../lib/pit-asset-schedule';
 import { DAY_THEMES } from '../lib/tape-week';
 
@@ -94,8 +93,6 @@ export default function ArenaTodayBoard({
         $100K virtual portfolio · live market prices · real prize pools
       </p>
 
-      <ArenaTapeTicker symbols={tickerSymbols} highlightSymbols={[...todayTapeSymbols]} />
-
       <p className="at-floor-status">
         <span className="at-floor-status-theme">{dayTheme.word} day</span>
         <span className="at-floor-status-sep">·</span>
@@ -129,13 +126,20 @@ export default function ArenaTodayBoard({
             onInfo={() => onInfo(mainItem.contest.id)}
             onEnter={() => onEnter(mainItem.contest)}
           />
-          {mainItem && mainBoard.length >= 2 && onViewLeaderboard && (
+
+          {mainBoard.length >= 2 && onViewLeaderboard && (
             <ArenaTapeLeaders
               contest={mainItem.contest}
               entries={mainBoard}
               onViewAll={() => onViewLeaderboard(mainItem.contest.id)}
             />
           )}
+
+          <ArenaTapeTicker
+            symbols={tickerSymbols}
+            highlightSymbols={[...todayTapeSymbols]}
+            subtle
+          />
         </section>
       )}
 
@@ -222,6 +226,8 @@ function HeroPitCard({
     valueMinDelta: 250,
   });
   const showLiveStats = isJoined && liveStats != null;
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const hasDetails = Boolean(tagline || tape || assetList.length > 0);
 
   return (
     <article className={`at-hero af-feature ${isLive ? 'af-feature-urgent at-hero-live' : ''}`}>
@@ -264,7 +270,6 @@ function HeroPitCard({
         </div>
 
         <h2 className="at-hero-name">{contest.title}</h2>
-        <p className="at-hero-hook">{tagline}</p>
 
         <p className="at-hero-meta">
           <span>{formatFloorTraders(participantCount)}</span>
@@ -282,19 +287,6 @@ function HeroPitCard({
             </>
           )}
         </p>
-
-        {(tape || assetList.length > 0) && (
-          <p className="at-hero-tape-compact">
-            {tape?.poolLabel}
-            {tape && assetList.length > 0 && <span className="at-meta-sep"> · </span>}
-            {assetList.length > 0 && (
-              <span className="at-hero-tape-symbols">
-                {assetList.join(' · ')}
-                {assetOverflow > 0 ? ` +${assetOverflow}` : ''}
-              </span>
-            )}
-          </p>
-        )}
 
         {showLiveStats && (
           <div className="at-hero-live-stats">
@@ -330,6 +322,34 @@ function HeroPitCard({
           </span>
           <ArrowRight size={18} strokeWidth={2.5} />
         </button>
+
+        {hasDetails && (
+          <div className="at-hero-details">
+            <button
+              type="button"
+              className="at-hero-details-toggle"
+              onClick={() => setDetailsOpen((v) => !v)}
+              aria-expanded={detailsOpen}
+            >
+              <span>What&apos;s on the tape</span>
+              {detailsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {detailsOpen && (
+              <div className="at-hero-details-body">
+                <p className="at-hero-tagline">{tagline}</p>
+                {tape && <p className="at-hero-tape">{tape.poolLabel}</p>}
+                {assetList.length > 0 && (
+                  <p className="at-hero-tape-compact">
+                    <span className="at-hero-tape-symbols">
+                      {assetList.join(' · ')}
+                      {assetOverflow > 0 ? ` +${assetOverflow}` : ''}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -354,7 +374,7 @@ function FreeStrip({
   onEnter: () => void;
   useServerStreak?: boolean;
 }) {
-  const { contest, scheduled } = item;
+  const { contest } = item;
 
   return (
     <div className={`at-secondary-pit at-free-strip ${isJoined ? 'at-secondary-pit-in' : ''}`}>
@@ -388,4 +408,3 @@ function FreeStrip({
     </div>
   );
 }
-
