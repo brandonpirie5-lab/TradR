@@ -272,7 +272,7 @@ export default function TradR() {
     serverSettledShownRef,
   } = game;
 
-
+  // Screen guides are manual only (help button) — auto-tour blocked clicks and felt like a freeze.
 
   const infoContest = infoContestId != null ? contests.find((c) => c.id === infoContestId) : null;
 
@@ -386,6 +386,24 @@ export default function TradR() {
       refreshTapeLeaderboard();
     }
   }, [vaultMode, globalPeriod, globalMetric, isSupabaseConfigured]);
+
+  useEffect(() => {
+    if (!tradingContestId || !usingServerGame) return;
+    void refreshLeaderboard(tradingContestId);
+    const interval = setInterval(() => {
+      void refreshLeaderboard(tradingContestId);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [tradingContestId, usingServerGame, refreshLeaderboard]);
+
+  useEffect(() => {
+    if (!usingServerGame || activeTab !== 'leaderboard' || vaultMode !== 'pit' || !activeVaultContestId) return;
+    void refreshLeaderboard(activeVaultContestId);
+    const interval = setInterval(() => {
+      void refreshLeaderboard(activeVaultContestId);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab, vaultMode, activeVaultContestId, usingServerGame, refreshLeaderboard]);
 
   const yourRank = dynamicVault.find((e) => e.isYou)?.rank || (dynamicVault.length ? dynamicVault.length + 1 : 1);
   const vaultPlayerCount = dynamicVault.length;
@@ -567,11 +585,15 @@ export default function TradR() {
     setChartContestId(null);
   };
 
-  const openLeaderboard = (contestId: number) => {
+  const openLeaderboard = async (contestId: number) => {
     setVaultContestId(contestId);
     setVaultMode('pit');
-    refreshLeaderboard(contestId);
     setActiveTab('leaderboard');
+    try {
+      await refreshLeaderboard(contestId);
+    } catch {
+      /* board still shows live local rank */
+    }
   };
 
   const handleTrade = () =>

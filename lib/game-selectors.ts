@@ -45,13 +45,22 @@ export function buildContestBoard(params: {
   } = params;
   if (!contestId) return [];
 
-  const serverBoard = leaderboardByContest[contestId];
-  if (serverBoard?.length) return serverBoard;
-
   const part = participations[contestId];
-  if (!part) return [];
-
   const getVal = (p: Participation) => calcPortfolioValue(p, prices);
+
+  const serverBoard = leaderboardByContest[contestId];
+  if (serverBoard?.length) {
+    if (!part) return serverBoard;
+    const yourLiveValue = getVal(part);
+    const merged = serverBoard.map((e) =>
+      e.isYou ? { ...e, portfolioValue: yourLiveValue } : e
+    );
+    return merged
+      .sort((a, b) => b.portfolioValue - a.portfolioValue)
+      .map((e, i) => ({ ...e, rank: i + 1 }));
+  }
+
+  if (!part) return [];
 
   if (isSupabaseConfigured || isLoggedIn) {
     const v = getVal(part);
