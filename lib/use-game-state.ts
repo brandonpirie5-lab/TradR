@@ -142,6 +142,7 @@ export function useGameState({
   const autoSettledIdsRef = useRef<Set<number>>(new Set());
   const serverSettledShownRef = useRef<Set<number>>(loadSeenSettlementIds());
   const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const priceFetchRunningRef = useRef(false);
   const syncGameRef = useRef<() => Promise<void>>(async () => {});
   const loadProfileExtrasRef = useRef(loadProfileExtras);
   const onSettlementRef = useRef(onSettlement);
@@ -314,7 +315,9 @@ export function useGameState({
     async (symbolsToFetch?: string[]) => {
       const symbols = symbolsToFetch || getAllSymbolsFromContests(contests);
       if (symbols.length === 0) return prices;
+      if (priceFetchRunningRef.current) return prices;
 
+      priceFetchRunningRef.current = true;
       try {
         const res = await fetch(`/api/prices?symbols=${symbols.join(',')}`);
         if (!res.ok) throw new Error('price api failed');
@@ -323,17 +326,15 @@ export function useGameState({
         const updated = { ...prices, ...fresh };
         setPrices(updated);
         setLastPriceUpdate(new Date());
-        if (!lastPriceUpdate || Date.now() - lastPriceUpdate.getTime() > 30000) {
-          showToast('Live market prices updated');
-        }
         return updated;
       } catch (err) {
         console.warn('Live price fetch failed', err);
-        showToast('Could not fetch live prices (using cached)', 'error');
         return prices;
+      } finally {
+        priceFetchRunningRef.current = false;
       }
     },
-    [contests, prices, lastPriceUpdate, showToast]
+    [contests, prices]
   );
 
   const celebrateOpeningBellStreak = useCallback(
@@ -1119,13 +1120,7 @@ export function useGameState({
       }) ??
       joined[joined.length - 1];
     setVaultContestId((prev) => {
-      if (prev != null) {
-        const prevContest = contests.find((c) => c.id === prev);
-        if (prevContest && canonical && isStaleOpeningBellContest(prevContest, canonical)) {
-          return joined.includes(canonical.id) ? canonical.id : preferred;
-        }
-        return prev;
-      }
+      if (prev != null && joined.includes(prev)) return prev;
       return preferred;
     });
   }, [participations, contests]);
@@ -1133,7 +1128,7 @@ export function useGameState({
   useEffect(() => {
     const symbols = getAllSymbolsFromContests(contests);
     if (!symbols.length) return;
-    const interval = setInterval(() => fetchLivePrices(symbols), 45000);
+    const interval = setInterval(() => fetchLivePrices(symbols), 60000);
     return () => clearInterval(interval);
   }, [contests, fetchLivePrices]);
 

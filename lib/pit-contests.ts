@@ -1,4 +1,5 @@
 import { Contest, DbContest, dbContestToContest } from './game-types';
+import { isContestTradingOpen, isJoinAllowed, startsMsRemaining, isContestStarted } from './contest-bell';
 import { getContestDurationHours } from './contest-rules';
 import {
   applyScheduleToContestAssets,
@@ -115,19 +116,50 @@ export function isOpeningBellContest(contest: { slug?: string; title?: string })
   );
 }
 
-type OpeningBellLike = { id?: number; slug?: string; title?: string; status?: string };
+type OpeningBellLike = {
+  id?: number;
+  slug?: string;
+  title?: string;
+  status?: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
+};
 
 function openingBellPickScore(contest: OpeningBellLike): number {
-  let score = contest.id ?? 0;
-  if (contest.title === 'Opening Bell Bloodbath') score += 10_000;
-  return score;
+  const id = contest.id ?? 0;
+  const clock = contest as Pick<Contest, 'status' | 'endsAt' | 'startsAt' | 'slug'>;
+  if (isContestTradingOpen(clock)) return 2_000_000 + id;
+  if (isContestStarted(clock)) return 1_000_000 + id;
+  const opensIn = startsMsRemaining(clock);
+  if (opensIn != null && isJoinAllowed(clock)) {
+    return 500_000 - Math.min(Math.floor(opensIn / 1000), 499_999) + id * 0.0001;
+  }
+  return id;
 }
 
-/** Prefer the newest live opening bell (bots + rotation land on highest id). */
+/** Prefer today's trading bell — not the farthest-future week-slate duplicate. */
 export function findOpeningBellContest<T extends OpeningBellLike>(contests: T[]): T | undefined {
   const open = contests.filter((c) => isOpeningBellContest(c) && c.status !== 'closed');
   if (!open.length) return undefined;
-  return open.reduce((best, c) => (openingBellPickScore(c) > openingBellPickScore(best) ? c : best));
+  const today = new Date().getDay();
+  const todayPits = open.filter((c) => {
+    if (!c.startsAt) return true;
+    return new Date(c.startsAt).getDay() === today;
+  });
+  const pool = todayPits.length ? todayPits : open;
+  return pool.reduce((best, c) => (openingBellPickScore(c) > openingBellPickScore(best) ? c : best));
+}
+
+/** Short label for vault pit picker when titles duplicate (week slate). */
+export function formatVaultPitPickerLabel(contest: Pick<Contest, 'title' | 'slug' | 'startsAt'>): string {
+  const day = contest.startsAt
+    ? new Date(contest.startsAt).toLocaleDateString('en-US', { weekday: 'short' })
+    : '';
+  if (isOpeningBellContest(contest)) {
+    return day ? `Opening Bell · ${day}` : 'Opening Bell';
+  }
+  const short = contest.title.split(' ').slice(0, 2).join(' ');
+  return day ? `${short} · ${day}` : short;
 }
 
 /** Legacy duplicate pits from older schema rotations. */

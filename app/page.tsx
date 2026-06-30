@@ -392,21 +392,18 @@ export default function TradR() {
     void refreshLeaderboard(tradingContestId);
     const interval = setInterval(() => {
       void refreshLeaderboard(tradingContestId);
-    }, 15000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [tradingContestId, usingServerGame, refreshLeaderboard]);
 
   useEffect(() => {
     if (!usingServerGame || activeTab !== 'leaderboard' || vaultMode !== 'pit' || !activeVaultContestId) return;
-    const contest = contests.find((c) => c.id === activeVaultContestId);
-    if (contest?.assets?.length) void fetchLivePrices(contest.assets);
     void refreshLeaderboard(activeVaultContestId);
     const interval = setInterval(() => {
-      if (contest?.assets?.length) void fetchLivePrices(contest.assets);
       void refreshLeaderboard(activeVaultContestId);
-    }, 15000);
+    }, 30000);
     return () => clearInterval(interval);
-  }, [activeTab, vaultMode, activeVaultContestId, usingServerGame, refreshLeaderboard, fetchLivePrices, contests]);
+  }, [activeTab, vaultMode, activeVaultContestId, usingServerGame, refreshLeaderboard]);
 
   const yourRank = dynamicVault.find((e) => e.isYou)?.rank || (dynamicVault.length ? dynamicVault.length + 1 : 1);
   const vaultPlayerCount = dynamicVault.length;
@@ -589,10 +586,13 @@ export default function TradR() {
   };
 
   const openLeaderboard = async (contestId: number) => {
+    setTradingContestId(null);
     setVaultContestId(contestId);
     setVaultMode('pit');
     setActiveTab('leaderboard');
     try {
+      const contest = contests.find((c) => c.id === contestId);
+      if (contest?.assets?.length) await fetchLivePrices(contest.assets);
       await refreshLeaderboard(contestId);
     } catch {
       /* board still shows live local rank */
@@ -1018,9 +1018,15 @@ export default function TradR() {
               setGlobalMetric(m);
               refreshGlobalLeaderboard(globalPeriod, m);
             }}
-            onSelectVaultContest={(id) => {
+            onSelectVaultContest={async (id) => {
               setVaultContestId(id);
-              refreshLeaderboard(id);
+              try {
+                const c = contests.find((x) => x.id === id);
+                if (c?.assets?.length) await fetchLivePrices(c.assets);
+                await refreshLeaderboard(id);
+              } catch {
+                showToast('Could not load that pit board', 'error');
+              }
             }}
             onRefreshPit={async () => {
               if (!activeVaultContestId) return;

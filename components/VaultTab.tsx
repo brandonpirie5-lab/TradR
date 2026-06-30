@@ -14,6 +14,8 @@ import {
   LeaderboardEntry,
   TapeLeaderboardEntry,
 } from '../lib/game-types';
+import { isContestTradingOpen } from '../lib/contest-bell';
+import { formatVaultPitPickerLabel } from '../lib/pit-contests';
 type VaultTabProps = {
   vaultMode: 'pit' | 'global' | 'tape';
   onVaultModeChange: (mode: 'pit' | 'global' | 'tape') => void;
@@ -120,7 +122,7 @@ export default function VaultTab({
                       )}
                     </p>
                   </div>
-                  {vaultPlayerCount >= 2 && (
+                  {vaultContest && isContestTradingOpen(vaultContest) && (
                     <span className="vt-pit-live">
                       <span className="vt-pit-live-dot" aria-hidden />
                       Live
@@ -141,7 +143,7 @@ export default function VaultTab({
                         onClick={() => onSelectVaultContest(id)}
                         className={`vt-pit-pill ${active ? 'vt-pit-pill-on' : ''}`}
                       >
-                        {c?.title || `Pit ${id}`}
+                        {c ? formatVaultPitPickerLabel(c) : `Pit ${id}`}
                       </button>
                     );
                   })}

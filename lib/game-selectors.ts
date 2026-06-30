@@ -127,6 +127,9 @@ export function resolveVaultContestId(params: {
   const canonicalOpeningBell = findOpeningBellContest(contests);
 
   if (vaultContestId) {
+    if (joinedContests.includes(vaultContestId)) {
+      return vaultContestId;
+    }
     const prevContest = contests.find((c) => c.id === vaultContestId);
     if (prevContest && isStaleOpeningBellContest(prevContest, canonicalOpeningBell)) {
       if (canonicalOpeningBell?.id && joinedContests.includes(canonicalOpeningBell.id)) {
