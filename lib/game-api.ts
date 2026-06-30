@@ -69,6 +69,16 @@ export async function ensureWeekSlate(): Promise<void> {
   }
 }
 
+let weekSlateOnce: Promise<void> | null = null;
+
+/** Spawn week slate at most once per page session — avoids API storms in dev. */
+export function ensureWeekSlateOnce(): Promise<void> {
+  if (!weekSlateOnce) {
+    weekSlateOnce = ensureWeekSlate();
+  }
+  return weekSlateOnce;
+}
+
 async function fetchWithTimeout(path: string, init: RequestInit = {}, ms = 20000): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);

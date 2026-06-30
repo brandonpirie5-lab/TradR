@@ -11,6 +11,7 @@ import {
 import { getPortfolioValue as calcPortfolioValue } from './portfolio';
 import {
   fetchContests,
+  ensureWeekSlateOnce,
   refreshGameState,
   joinContestApi,
   executeTradeApi,
@@ -136,8 +137,24 @@ export function useGameState({
   const [bellTick, setBellTick] = useState(0);
 
   const prevPricesRef = useRef<Record<string, number>>({});
+  const pricesRef = useRef(prices);
+  pricesRef.current = prices;
   const autoSettledIdsRef = useRef<Set<number>>(new Set());
   const serverSettledShownRef = useRef<Set<number>>(loadSeenSettlementIds());
+  const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncGameRef = useRef<() => Promise<void>>(async () => {});
+  const loadProfileExtrasRef = useRef(loadProfileExtras);
+  const onSettlementRef = useRef(onSettlement);
+  const celebrateStreakRef = useRef<(c: Contest) => void>(() => {});
+  const showToastRef = useRef(showToast);
+  const contestsRef = useRef(contests);
+  const participationsRef = useRef(participations);
+  const userRef = useRef(user);
+  const loadUserDataRef = useRef<(userId: string) => Promise<void>>(async () => {});
+  const lastAuthUserIdRef = useRef<string | null>(null);
+  const setUserRef = useRef(setUser);
+  const setProfileRef = useRef(setProfile);
+  const setAuthLoadingRef = useRef(setAuthLoading);
 
   const isLoggedIn = !!user;
   const usingServerGame = isSupabaseConfigured && isLoggedIn;
@@ -191,8 +208,9 @@ export function useGameState({
       if (!isSupabaseConfigured) return [];
       try {
         const { entries, prices: lbPrices } = await fetchLeaderboard(contestId);
-        const marked = user
-          ? entries.map((e) => ({ ...e, isYou: e.userId === user.id }))
+        const activeUser = userRef.current;
+        const marked = activeUser
+          ? entries.map((e) => ({ ...e, isYou: e.userId === activeUser.id }))
           : entries;
         setLeaderboardByContest((prev) => ({ ...prev, [contestId]: marked }));
         if (Object.keys(lbPrices).length) {
@@ -204,7 +222,7 @@ export function useGameState({
         return [];
       }
     },
-    [user]
+    []
   );
 
   const loadUserData = useCallback(
@@ -361,6 +379,19 @@ export function useGameState({
     },
     [usingServerGame, showToast, syncGameFromServer, loadProfileExtras]
   );
+
+  syncGameRef.current = syncGameFromServer;
+  loadProfileExtrasRef.current = loadProfileExtras;
+  onSettlementRef.current = onSettlement;
+  celebrateStreakRef.current = celebrateOpeningBellStreak;
+  showToastRef.current = showToast;
+  contestsRef.current = contests;
+  participationsRef.current = participations;
+  userRef.current = user;
+  loadUserDataRef.current = loadUserData;
+  setUserRef.current = setUser;
+  setProfileRef.current = setProfile;
+  setAuthLoadingRef.current = setAuthLoading;
 
   const rankInContest = useCallback(
     (contestId: number): number | null => {
@@ -903,39 +934,44 @@ export function useGameState({
     ]
   );
 
-  // Auth listener
+  // Auth listener — mount once; deps must not include loadUserData (it changes when user changes → infinite loop on signup)
   useEffect(() => {
     if (!supabase) {
-      setAuthLoading?.(false);
+      setAuthLoadingRef.current?.(false);
       return;
     }
+
+    const applySession = (session: { user: NonNullable<typeof user> } | null) => {
+      const nextId = session?.user?.id ?? null;
+      const sameUser = nextId !== null && nextId === lastAuthUserIdRef.current;
+      lastAuthUserIdRef.current = nextId;
+      setAuthLoadingRef.current?.(false);
+
+      if (sameUser) return;
+
+      setUserRef.current(session?.user ?? null);
+      if (session?.user?.id) {
+        setParticipations({});
+        setLeaderboardByContest({});
+        void loadUserDataRef.current(session.user.id);
+      } else {
+        setProfileRef.current(null);
+        setLeaderboardByContest({});
+      }
+    };
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setAuthLoading?.(false);
-      if (session?.user) {
-        setParticipations({});
-        setLeaderboardByContest({});
-        loadUserData(session.user.id);
-      } else {
-        setProfile(null);
-        setLeaderboardByContest({});
-      }
+      applySession(session);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setAuthLoading?.(false);
-      if (session?.user) {
-        setParticipations({});
-        loadUserData(session.user.id);
-      }
+      applySession(session);
     });
 
     return () => subscription.unsubscribe();
-  }, [loadUserData, setUser, setProfile, setAuthLoading]);
+  }, []);
 
   useEffect(() => {
     if (!user || !supabase) return;
@@ -948,8 +984,11 @@ export function useGameState({
         (payload) => {
           const newBal = (payload.new as { balance?: number }).balance;
           if (typeof newBal === 'number') {
-            setUserBalance(newBal);
-            showToast('Balance updated live');
+            setUserBalance((prev) => {
+              if (prev === newBal) return prev;
+              showToastRef.current('Balance updated live');
+              return newBal;
+            });
           }
         }
       )
@@ -957,18 +996,27 @@ export function useGameState({
     return () => {
       void sb.removeChannel(channel);
     };
-  }, [user, showToast]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (isLoggedIn && profile && typeof profile.balance === 'number') {
-      setUserBalance(profile.balance);
+      setUserBalance((prev) => (prev === profile.balance ? prev : profile.balance!));
     }
-  }, [profile, isLoggedIn]);
+  }, [profile?.balance, isLoggedIn]);
 
   useEffect(() => {
-    if (isLoggedIn) {
-      localStorage.setItem('tradr-state', JSON.stringify({ participations, prices, contests }));
-    }
+    if (!isLoggedIn) return;
+    if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+    localSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem('tradr-state', JSON.stringify({ participations, prices, contests }));
+      } catch {
+        /* quota */
+      }
+    }, 2000);
+    return () => {
+      if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+    };
   }, [participations, prices, contests, isLoggedIn]);
 
   useEffect(() => {
@@ -981,6 +1029,7 @@ export function useGameState({
     const boot = async () => {
       if (isSupabaseConfigured) {
         try {
+          void ensureWeekSlateOnce();
           const serverContests = await fetchContests();
           if (serverContests.length) {
             setContests(serverContests);
@@ -1054,7 +1103,7 @@ export function useGameState({
     if (!contestIds.length) return;
 
     contestIds.forEach((id) => refreshLeaderboard(id));
-    const interval = setInterval(() => contestIds.forEach((id) => refreshLeaderboard(id)), 10000);
+    const interval = setInterval(() => contestIds.forEach((id) => refreshLeaderboard(id)), 45000);
     return () => clearInterval(interval);
   }, [participations, contests, vaultContestId, user?.id, refreshLeaderboard]);
 
@@ -1084,7 +1133,7 @@ export function useGameState({
   useEffect(() => {
     const symbols = getAllSymbolsFromContests(contests);
     if (!symbols.length) return;
-    const interval = setInterval(() => fetchLivePrices(symbols), 10000);
+    const interval = setInterval(() => fetchLivePrices(symbols), 45000);
     return () => clearInterval(interval);
   }, [contests, fetchLivePrices]);
 
@@ -1107,39 +1156,44 @@ export function useGameState({
     const polygonKey = process.env.NEXT_PUBLIC_POLYGON_API_KEY;
     if (!polygonKey) return;
 
+    const symbols = getAllSymbolsFromContests(contests);
+    if (!symbols.length) return;
+
     const ws = new WebSocket('wss://socket.polygon.io/stocks');
     ws.onopen = () => {
       ws.send(JSON.stringify({ action: 'auth', params: polygonKey }));
-      const tickers = getAllSymbolsFromContests(contests)
-        .map((s) => (isCrypto(s) ? `X:${s}USD` : s))
-        .join(',');
+      const tickers = symbols.map((s) => (isCrypto(s) ? `X:${s}USD` : s)).join(',');
       ws.send(JSON.stringify({ action: 'subscribe', params: `T.${tickers}` }));
     };
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        if (Array.isArray(msg)) {
-          msg.forEach((m: { ev?: string; p?: number; T?: string }) => {
-            if (m.ev === 'T' && m.p != null) {
-              const px = m.p;
-              const sym =
-                Object.keys(CRYPTO_MAP).find((k) => CRYPTO_MAP[k] === m.T) ||
-                m.T?.replace('X:', '').replace('USD', '');
-              if (sym && prices[sym] !== undefined) {
-                setPrices((prev) => ({
-                  ...prev,
-                  [sym]: Number(px.toFixed(sym === 'DOGE' ? 5 : 2)),
-                }));
-              }
-            }
-          });
+        if (!Array.isArray(msg)) return;
+        const snapshot = pricesRef.current;
+        let changed = false;
+        const next = { ...snapshot };
+        msg.forEach((m: { ev?: string; p?: number; T?: string }) => {
+          if (m.ev !== 'T' || m.p == null) return;
+          const sym =
+            Object.keys(CRYPTO_MAP).find((k) => CRYPTO_MAP[k] === m.T) ||
+            m.T?.replace('X:', '').replace('USD', '');
+          if (!sym || snapshot[sym] === undefined) return;
+          const px = Number(m.p.toFixed(sym === 'DOGE' ? 5 : 2));
+          if (next[sym] !== px) {
+            next[sym] = px;
+            changed = true;
+          }
+        });
+        if (changed) {
+          setPrices(next);
+          setLastPriceUpdate(new Date());
         }
       } catch {
         /* ignore */
       }
     };
     return () => ws.close();
-  }, [contests, prices]);
+  }, [contests]);
 
   useEffect(() => {
     if (!user || !supabase) return;
@@ -1187,12 +1241,19 @@ export function useGameState({
 
   useEffect(() => {
     if (!usingServerGame) return;
+
+    let cancelled = false;
+    let running = false;
+
     const runAutoSettle = async () => {
+      if (cancelled || running) return;
+      running = true;
       try {
         const result = await triggerAutoSettle();
+        if (cancelled) return;
         if (result.settled > 0 || (result.spawned ?? 0) > 0) {
-          await syncGameFromServer();
-          loadProfileExtras?.();
+          await syncGameRef.current();
+          loadProfileExtrasRef.current?.();
           if (result.settled > 0) {
             const yours = result.contests.find(
               (c) => c.yourAffected || c.yourRank != null || c.voided
@@ -1200,9 +1261,11 @@ export function useGameState({
             if (yours && !serverSettledShownRef.current.has(yours.id)) {
               serverSettledShownRef.current.add(yours.id);
               markSettlementSeen(yours.id);
-              const settledContest = contests.find((x) => x.id === yours.id);
-              if (settledContest?.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(settledContest);
-              onSettlement({
+              const settledContest = contestsRef.current.find((x) => x.id === yours.id);
+              if (settledContest?.slug === OPENING_BELL_SLUG) {
+                void celebrateStreakRef.current(settledContest);
+              }
+              onSettlementRef.current({
                 contestId: yours.id,
                 contestSlug: settledContest?.slug,
                 rank: yours.yourRank ?? 0,
@@ -1211,7 +1274,7 @@ export function useGameState({
                 voided: yours.voided,
                 contestTitle: yours.title,
                 portfolioValue: yours.yourPortfolioValue ?? 0,
-                startingValue: participations[yours.id]?.startingValue ?? 100_000,
+                startingValue: participationsRef.current[yours.id]?.startingValue ?? 100_000,
                 settlementPrices: yours.settlementPrices,
               });
             } else {
@@ -1221,39 +1284,34 @@ export function useGameState({
                   serverSettledShownRef.current.add(c.id);
                   markSettlementSeen(c.id);
                 });
-                showToast(`Pit closed: ${unseen.map((c) => c.title).join(', ')}`);
+                showToastRef.current(`Pit closed: ${unseen.map((c) => c.title).join(', ')}`);
               }
             }
           }
           if ((result.spawned ?? 0) > 0) {
-            showToast(`${result.spawned} fresh pit(s) spawned`);
+            showToastRef.current(`${result.spawned} fresh pit(s) spawned`);
           }
         }
       } catch {
         /* offline */
+      } finally {
+        running = false;
       }
     };
-    runAutoSettle();
-    const interval = setInterval(runAutoSettle, 30000);
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') runAutoSettle();
-    };
-    document.addEventListener('visibilitychange', onVisible);
+
+    const bootTimer = setTimeout(() => {
+      void runAutoSettle();
+    }, 5000);
+    const interval = setInterval(() => {
+      void runAutoSettle();
+    }, 180000);
+
     return () => {
+      cancelled = true;
+      clearTimeout(bootTimer);
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [
-    usingServerGame,
-    user?.id,
-    syncGameFromServer,
-    loadProfileExtras,
-    contests,
-    participations,
-    onSettlement,
-    celebrateOpeningBellStreak,
-    showToast,
-  ]);
+  }, [usingServerGame, user?.id]);
 
   useEffect(() => {
     if (usingServerGame) return;
@@ -1272,14 +1330,17 @@ export function useGameState({
   }, [bellTick, usingServerGame, participations, contests, settleContest]);
 
   useEffect(() => {
-    setContests((prev) =>
-      prev.map((c) => {
+    setContests((prev) => {
+      let changed = false;
+      const next = prev.map((c) => {
         if (c.status === 'open' && c.startsAt && isContestStarted(c)) {
+          changed = true;
           return { ...c, status: 'active' as const };
         }
         return c;
-      })
-    );
+      });
+      return changed ? next : prev;
+    });
   }, [bellTick]);
 
   const simulateMarket = useCallback(
