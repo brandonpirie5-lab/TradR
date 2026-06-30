@@ -165,3 +165,6 @@ set
   ends_at = now() + interval '24 hours'
 where slug = 'opening-bell'
   and status in ('open', 'active');
+
+-- 6) Referral stats (profiles.referred_by)
+alter table profiles add column if not exists referred_by uuid references auth.users;

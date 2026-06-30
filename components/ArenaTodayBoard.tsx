@@ -147,6 +147,9 @@ export default function ArenaTodayBoard({
         onInfoPit={onInfoWeekPit}
       />
 
+      <p className="at-arena-footer">
+        <strong>Fake money. Real ego.</strong> Ring in on the floor, trade in Battles, climb the Vault.
+      </p>
     </div>
   );
 }
