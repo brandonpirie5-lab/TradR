@@ -1748,8 +1748,8 @@ button.tour-spotlight-active,
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(234, 179, 8, 0.08);
-  background: linear-gradient(180deg, rgba(234, 179, 8, 0.03) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
 }
 
 .pit-chrome-left {
@@ -1768,7 +1768,7 @@ button.tour-spotlight-active,
   font-size: 9px;
   font-weight: 500;
   letter-spacing: 0.22em;
-  color: var(--accent);
+  color: var(--text-muted);
   margin-left: 4px;
   vertical-align: middle;
 }
@@ -1776,6 +1776,7 @@ button.tour-spotlight-active,
 .pit-chrome-status {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 4px;
   font-size: 10px;
@@ -1784,13 +1785,17 @@ button.tour-spotlight-active,
   letter-spacing: 0.02em;
 }
 
+.pit-chrome-status-sep {
+  opacity: 0.4;
+}
+
 .pit-chrome-orb {
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
-  animation: pit-orb-pulse 2s ease-in-out infinite;
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.45);
+  animation: none;
   flex-shrink: 0;
 }
 

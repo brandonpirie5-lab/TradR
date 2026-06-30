@@ -289,3 +289,17 @@ export function getAllSchedulableSymbols(): string[] {
   Object.values(ASSET_POOLS).forEach((pool) => pool.forEach((s) => set.add(s)));
   return [...set];
 }
+
+/** Floor tape order for the Arena ticker — every tradable symbol, majors first. */
+const ARENA_TAPE_SYMBOL_ORDER = [
+  'BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'LINK', 'AVAX', 'SUI', 'DOT', 'LTC', 'UNI', 'PEPE',
+  'SPY', 'QQQ', 'AAPL', 'GOOGL', 'META', 'NVDA', 'TSLA', 'GLD', 'SLV',
+] as const;
+
+export function getOrderedArenaTapeSymbols(): string[] {
+  const all = new Set(getAllSchedulableSymbols());
+  const ordered = ARENA_TAPE_SYMBOL_ORDER.filter((s) => all.has(s));
+  const orderedSet = new Set<string>(ordered);
+  const rest = [...all].filter((s) => !orderedSet.has(s)).sort();
+  return [...ordered, ...rest];
+}

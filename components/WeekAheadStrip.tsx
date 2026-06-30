@@ -5,7 +5,6 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { Contest } from '../lib/game-types';
 import { getTodayPreview, getWeekPreview, type WeekContestPreview } from '../lib/weekly-preview';
 import { getWeekJoinState } from '../lib/week-join';
-import { getDayThemeStyle } from '../lib/tape-week';
 import PitMoneyDisplay from './PitMoneyDisplay';
 
 const WEEK_INTRO_KEY = 'tradr_week_intro_shown';
@@ -26,19 +25,10 @@ function featuredLabel(slug: string, role: WeekContestPreview['featured']): stri
   return null;
 }
 
-const RIBBON_PIT_SHORT: Record<string, string> = {
-  'opening-bell': 'Opening Bell',
-  'the-liquidation': 'Liquidation',
-  'full-send': 'Full Send',
-  'triple-stack': 'Triple Stack',
-  'weekend-carnage': 'Weekend Carnage',
-  'tradfi-vs-degen': 'Suits vs. Size',
-  'meme-mayhem': 'Meme Mayhem',
-  'gold-rush': 'Gold Rush',
-};
-
-function ribbonPitLabel(preview: WeekContestPreview): string {
-  return RIBBON_PIT_SHORT[preview.slug] ?? preview.title.split(' ').slice(0, 2).join(' ');
+function previewChipLabel(preview: WeekContestPreview): string {
+  if (preview.slug === 'opening-bell') return 'Free bell';
+  if (preview.entryFee === 0) return preview.title.split(' ')[0];
+  return preview.title.split(' ').slice(0, 2).join(' ');
 }
 
 function WeekPitRow({
@@ -78,7 +68,13 @@ function WeekPitRow({
         >
           <div className="af-week-pit-row-body">
             <div className="af-week-pit-row-head">
-              {badge && <span className="af-week-pit-badge">{badge}</span>}
+              {badge && (
+                <span
+                  className={`af-week-pit-badge ${badge === 'Free' ? 'af-week-pit-badge-free' : ''}`}
+                >
+                  {badge}
+                </span>
+              )}
               <span className="af-week-pit-title">{preview.title}</span>
               {state.isLive && (
                 <span className="af-week-pit-live">
@@ -87,29 +83,34 @@ function WeekPitRow({
                 </span>
               )}
             </div>
-            <div className="af-week-pit-money-row">
-              <PitMoneyDisplay
-                slug={preview.slug}
-                totalPrizes={preview.totalPrizes}
-                entryFee={preview.entryFee}
-                variant="compact"
-                showSuffix={false}
-              />
-            </div>
-            <span className="af-week-pit-tape">
-              {preview.assetCount} assets · {preview.poolLabel}
-            </span>
             {!open && (
-              <div className="af-week-pit-chips">
-                {preview.topAssets.slice(0, 3).map((sym) => (
-                  <span key={sym} className="af-week-row-chip">
-                    {sym}
-                  </span>
-                ))}
-                {preview.assetCount > 3 && (
-                  <span className="af-week-row-chip af-week-row-chip-more">+{preview.assetCount - 3}</span>
+              <span className="at-secondary-pit-meta">
+                ${preview.firstPrize.toLocaleString()} 1st
+                <span className="at-secondary-pit-sep">·</span>
+                {preview.entryFee === 0 ? 'Free' : `$${preview.entryFee}`} entry
+                {!state.isLive && state.opensLabel && (
+                  <>
+                    <span className="at-secondary-pit-sep">·</span>
+                    <span className="af-week-pit-opens">{state.opensLabel}</span>
+                  </>
                 )}
-              </div>
+              </span>
+            )}
+            {open && (
+              <>
+                <div className="af-week-pit-money-row">
+                  <PitMoneyDisplay
+                    slug={preview.slug}
+                    totalPrizes={preview.totalPrizes}
+                    entryFee={preview.entryFee}
+                    variant="compact"
+                    showSuffix={false}
+                  />
+                </div>
+                <span className="af-week-pit-tape">
+                  {preview.assetCount} assets · {preview.poolLabel}
+                </span>
+              </>
             )}
           </div>
           {open ? (
@@ -199,13 +200,10 @@ export default function WeekAheadStrip({
   const fightCardRef = useRef<HTMLDivElement>(null);
   const today = getTodayPreview(anchor);
   const week = getWeekPreview(anchor);
-  const todayDayIndex = anchor.getDay();
-  const themeStyle = getDayThemeStyle(todayDayIndex);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!localStorage.getItem(WEEK_INTRO_KEY)) {
-      setExpanded(true);
       localStorage.setItem(WEEK_INTRO_KEY, '1');
     }
   }, []);
@@ -215,66 +213,52 @@ export default function WeekAheadStrip({
   };
 
   return (
-    <section
-      className="af-week af-week-arena-top af-week-ribbon af-week-neutral af-week-themed"
-      style={themeStyle}
-      data-day-index={todayDayIndex}
-      data-tour="week-ahead"
-    >
+    <section className="af-week af-week-arena-top af-week-ribbon" data-tour="week-ahead">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="af-week-toggle af-week-toggle-v4"
+        className="af-week-toggle af-week-toggle-v3 af-week-toggle-slim"
         aria-expanded={expanded}
       >
-        <div className="af-week-toggle-bar">
-          <span className="af-week-kicker af-week-kicker-compact">Week</span>
-          {liveCount > 0 && (
-            <span className="af-week-live-pill af-week-live-pill-compact">
-              <span className="af-week-live-dot" aria-hidden />
-              {liveCount} live
-            </span>
-          )}
-          <span className="af-week-expand-hint af-week-expand-hint-compact">
-            {expanded ? 'Hide' : 'Plan'}
+        <span className="af-week-toggle-slim-main">
+          <span className="af-week-toggle-slim-title">Plan the week</span>
+          <span className="af-week-toggle-slim-sub">
+            {today.theme.word} · join ahead
+            {liveCount > 0 && (
+              <>
+                <span className="af-week-toggle-slim-sep">·</span>
+                <span className="af-week-toggle-slim-live-inline">
+                  <span className="af-week-live-dot af-week-live-dot-green" aria-hidden />
+                  {liveCount} live
+                </span>
+              </>
+            )}
           </span>
+        </span>
+        <span className="af-week-toggle-slim-action">
+          <span className="af-week-expand-hint">{expanded ? 'Hide' : 'View week'}</span>
           {expanded ? (
-            <ChevronUp size={15} className="af-week-chevron" />
+            <ChevronUp size={16} className="af-week-chevron" />
           ) : (
-            <ChevronDown size={15} className="af-week-chevron" />
+            <ChevronDown size={16} className="af-week-chevron" />
           )}
-        </div>
-
-        <div className="af-week-toggle-body">
-          {!expanded ? (
-            <>
-              <p className="af-week-headline-compact">
-                <span className="af-week-headline-lead">Today</span>
-                {today.slate.length > 0 && (
-                  <span className="af-week-inline-pits">
-                    {' · '}
-                    {today.slate.map((pit, i) => (
-                      <React.Fragment key={pit.slug}>
-                        {i > 0 && ' · '}
-                        <span className="af-week-inline-pit">{ribbonPitLabel(pit)}</span>
-                      </React.Fragment>
-                    ))}
-                  </span>
-                )}
-              </p>
-              <p className="af-week-subline">2 pits today · tap to plan</p>
-            </>
-          ) : (
-            <p className="af-week-headline-compact">
-              <span className="af-week-headline-lead">This week</span>
-              <span className="af-week-headline-muted"> · 14 pits on the tape</span>
-            </p>
-          )}
-        </div>
+        </span>
       </button>
 
       {expanded && (
         <div className="af-week-expanded-wrap">
+          <div className="af-week-expanded-intro">
+            <p className="af-week-expanded-lede">Mon–Sun · 14 pits on the tape · 2 per day</p>
+            {today.slate.length > 0 && (
+              <div className="af-week-preview-chips">
+                {today.slate.map((pit) => (
+                  <span key={pit.slug} className="af-week-preview-chip">
+                    {previewChipLabel(pit)}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
           <button type="button" className="af-week-jump-today" onClick={scrollToToday}>
             Jump to today
           </button>
@@ -284,17 +268,16 @@ export default function WeekAheadStrip({
                 key={day.dayName}
                 ref={day.isToday ? todayRef : undefined}
                 id={day.isToday ? 'af-week-today' : undefined}
-                className={`af-week-day-block ${day.isToday ? 'af-week-day-block-today af-week-day-themed' : ''}`}
-                style={day.isToday ? getDayThemeStyle(day.dayIndex) : undefined}
+                className={`af-week-day-block ${day.isToday ? 'af-week-day-block-today' : ''}`}
               >
                 <div className="af-week-row-head">
                   <div className="af-week-row-day">
                     <span className="af-week-row-name">{day.dayName.slice(0, 3)}</span>
-                    <span className="af-week-row-theme">{day.theme.tapeLabel}</span>
+                    <span className="af-week-row-theme">{day.theme.word}</span>
                   </div>
                   {day.isToday && <span className="af-week-today-pill">Today</span>}
                 </div>
-                <p className="af-week-day-tag">{day.theme.tagline}</p>
+                {day.isToday && <p className="af-week-day-tag">{day.theme.tagline}</p>}
 
                 {day.slate.map((pit) => (
                   <WeekPitRow

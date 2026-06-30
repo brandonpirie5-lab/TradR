@@ -1,0 +1,247 @@
+/* Trade sheet — slim pit ticket */
+
+.ts-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.ts-sheet {
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+  max-height: 92dvh;
+  overflow-y: auto;
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  border-top: 1px solid rgba(234, 179, 8, 0.28);
+  background: #0c0c0c;
+  padding: 16px 16px 28px;
+}
+
+.ts-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ts-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+
+.ts-bell {
+  margin-top: 4px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--text-muted);
+}
+
+.ts-bell-urgent {
+  color: #f87171;
+}
+
+.ts-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ts-zone {
+  margin-bottom: 12px;
+}
+
+.ts-zone .money-zone-bar {
+  margin-bottom: 0;
+}
+
+.ts-trade-meter {
+  margin-bottom: 12px;
+}
+
+.ts-stale {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #f87171;
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.ts-assets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ts-asset {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+
+.ts-asset-on {
+  border-color: rgba(234, 179, 8, 0.4);
+  background: rgba(234, 179, 8, 0.06);
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.12);
+}
+
+.ts-asset-flash-up {
+  background: rgba(22, 101, 52, 0.25);
+}
+
+.ts-asset-flash-down {
+  background: rgba(127, 29, 29, 0.25);
+}
+
+.ts-asset-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ts-asset-price {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ts-asset-hold {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.ts-chart {
+  margin-bottom: 12px;
+}
+
+.ts-leaderboard-link {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.ts-order {
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ts-shares-input {
+  width: 100%;
+  margin: 6px 0 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+
+.ts-quick-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ts-quick-btn {
+  flex: 1;
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.ts-side-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ts-side-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+.ts-side-btn-on {
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 55%, #ca8a04 100%);
+  border-color: transparent;
+}
+
+.ts-preview {
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.15);
+  background: rgba(234, 179, 8, 0.04);
+  font-size: 11px;
+}
+
+.ts-preview-kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.ts-confirm {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 55%, #ca8a04 100%);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.12), 0 6px 18px rgba(234, 179, 8, 0.18);
+}
+
+.ts-confirm:disabled {
+  opacity: 0.4;
+}

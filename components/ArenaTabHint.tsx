@@ -1,0 +1,35 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
+
+const ARENA_TAB_HINT_KEY = 'tradr_arena_tab_hint_shown';
+
+export default function ArenaTabHint() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!localStorage.getItem(ARENA_TAB_HINT_KEY)) {
+      setVisible(true);
+    }
+  }, []);
+
+  const dismiss = () => {
+    localStorage.setItem(ARENA_TAB_HINT_KEY, '1');
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div className="at-tab-hint">
+      <p className="at-tab-hint-text">
+        <strong>Arena</strong> = join pits here. <strong>Battles</strong> = trade your tickets.
+      </p>
+      <button type="button" onClick={dismiss} className="at-tab-hint-dismiss" aria-label="Dismiss">
+        <X size={14} />
+      </button>
+    </div>
+  );
+}

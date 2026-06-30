@@ -8,7 +8,7 @@ const STEPS: SpotlightTourStep[] = [
   {
     id: 'tabs',
     title: 'Active / Upcoming / Done',
-    body: 'Three tabs for your contest life. Active = pits you\'re in now. Upcoming = open arenas. Done = results + recap.',
+    body: 'Three tabs for your contest life. Active = pits you\'re in now. Upcoming = rang-in tickets before the bell. Done = results + recap.',
     target: 'tabs',
     padding: 6,
   },

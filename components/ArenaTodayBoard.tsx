@@ -2,19 +2,21 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { useCalmLiveStats } from '../lib/use-calm-live-stats';
 import { ArrowRight, Info } from 'lucide-react';
 import { Contest } from '../lib/game-types';
 import { OPENING_BELL_SLUG } from '../lib/pit-contests';
-import PitMoneyDisplay, { PitPoolSummary, PitProjectedPayout } from './PitMoneyDisplay';
-import PitFillBadge from './PitFillBadge';
-import { formatPitStartTime, getCanonicalPitOpenLabel } from '../lib/pit-schedule';
+import { pitActionLabel, PIT_DEFAULT_TAGLINE } from '../lib/pit-cta';
+import PitMoneyDisplay from './PitMoneyDisplay';
+import { formatPitStartTime } from '../lib/pit-schedule';
 import { getContestTapeInfo, FEATURED_PIT_BY_DAY } from '../lib/tape-week';
 import { TimeLeftLabel } from './BellCountdown';
 import type { ArenaPitItem } from './ArenaHome';
+import AssetChip from './AssetChip';
 import WeekAheadStrip from './WeekAheadStrip';
-import InviteFriendsHero from './InviteFriendsHero';
-import { countPaidRanks, getPayoutStructure } from '../lib/pit-payouts';
-import { getPitFillStatus } from '../lib/contest-fill';
+import ArenaTapeTicker from './ArenaTapeTicker';
+import { getOrderedArenaTapeSymbols } from '../lib/pit-asset-schedule';
+import { DAY_THEMES } from '../lib/tape-week';
 
 const OpeningBellStreakBadge = dynamic(() => import('./OpeningBellStreakBadge'), {
   ssr: false,
@@ -34,56 +36,11 @@ type ArenaTodayBoardProps = {
   onJoinWeekPit: (slug: string, dayIndex: number) => void;
   onInfoWeekPit: (slug: string, dayIndex: number) => void;
   useServerStreak?: boolean;
-  onCopyReferralLink: () => void;
-  onShareReferralLink: () => void;
-  referralCopied?: boolean;
+  getPitLiveStats?: (contestId: number) => { liveValue: number; pnlPct: number; rank: number | null } | null;
 };
-
-function AssetChips({ assets, max = 4 }: { assets: string[]; max?: number }) {
-  const shown = assets.slice(0, max);
-  const extra = assets.length - shown.length;
-  return (
-    <div className="at-chips">
-      {shown.map((sym) => (
-        <span key={sym} className="at-chip">
-          {sym}
-        </span>
-      ))}
-      {extra > 0 && <span className="at-chip at-chip-more">+{extra}</span>}
-    </div>
-  );
-}
 
 function traderCount(n: number): string {
   return n === 1 ? '1 trader' : `${n} traders`;
-}
-
-function entryLabel(fee: number): string {
-  return fee === 0 ? 'Free' : `$${fee}`;
-}
-
-function ctaLabel(
-  contest: Contest,
-  scheduled: boolean,
-  isJoined: boolean,
-  isTradingOpen: boolean
-): string {
-  if (scheduled) return contest.entryFee === 0 ? 'Ring in' : `Enter · $${contest.entryFee}`;
-  if (!isJoined) return contest.entryFee === 0 ? 'Ring in' : 'Enter pit';
-  if (isTradingOpen) return 'Open ticket';
-  return 'Rang in';
-}
-
-function joinLabel(
-  contest: Contest,
-  scheduled: boolean,
-  isJoined: boolean,
-  isTradingOpen: boolean
-): string {
-  if (scheduled) return 'Ring in';
-  if (!isJoined) return 'Join';
-  if (isTradingOpen) return 'Trade';
-  return 'View';
 }
 
 export default function ArenaTodayBoard({
@@ -100,9 +57,7 @@ export default function ArenaTodayBoard({
   onJoinWeekPit,
   onInfoWeekPit,
   useServerStreak = false,
-  onCopyReferralLink,
-  onShareReferralLink,
-  referralCopied = false,
+  getPitLiveStats,
 }: ArenaTodayBoardProps) {
   const dayIndex = new Date().getDay();
   const featured = FEATURED_PIT_BY_DAY[dayIndex];
@@ -117,47 +72,62 @@ export default function ArenaTodayBoard({
     pits[0];
 
   const freeTape = getContestTapeInfo(OPENING_BELL_SLUG, dayIndex);
-  const inviteFocus = mainItem?.contest ?? freeItem?.contest ?? null;
-  const inviteJoined =
-    !!inviteFocus && joinedContestIds.includes(inviteFocus.id);
-  const inviteCount = inviteFocus ? getParticipantCount(inviteFocus.id) : 0;
   const showFreeStrip = freeItem && mainItem?.contest.slug !== OPENING_BELL_SLUG;
+  const dayTheme = DAY_THEMES[dayIndex];
+  const tickerSymbols = getOrderedArenaTapeSymbols();
+  const mainTape = mainItem ? getContestTapeInfo(mainItem.contest.slug, dayIndex) : null;
+  const todayTapeSymbols = new Set([
+    ...(mainTape?.assets ?? []),
+    ...(freeTape?.assets ?? []),
+  ]);
 
   return (
     <div className="at-board at-board-v3">
-      <WeekAheadStrip
-        contests={contests}
-        joinedContestIds={joinedContestIds}
-        liveCount={liveCount}
-        onJoinPit={onJoinWeekPit}
-        onInfoPit={onInfoWeekPit}
-      />
+      <ArenaTapeTicker symbols={tickerSymbols} highlightSymbols={[...todayTapeSymbols]} />
+
+      <p className="at-floor-status">
+        <span className="at-floor-status-theme">{dayTheme.word} day</span>
+        <span className="at-floor-status-sep">·</span>
+        <span className="at-floor-status-tag">{dayTheme.tagline}</span>
+        {liveCount > 0 && (
+          <>
+            <span className="at-floor-status-sep">·</span>
+            <span className="at-floor-status-live">
+              {liveCount} pit{liveCount === 1 ? '' : 's'} live
+            </span>
+          </>
+        )}
+      </p>
 
       {mainItem && (
         <section className="at-main" data-tour="arena-hero">
+          <p className="at-section-label">
+            Today&apos;s main pit
+            <span className="at-section-theme">{dayTheme.word}</span>
+          </p>
           <HeroPitCard
             item={mainItem}
             dayIndex={dayIndex}
             isJoined={joinedContestIds.includes(mainItem.contest.id)}
             rank={getRank(mainItem.contest.id)}
+            liveStats={getPitLiveStats?.(mainItem.contest.id) ?? null}
             participantCount={getParticipantCount(mainItem.contest.id)}
             bellTick={bellTick}
             hydrated={hydrated}
             isTradingOpen={isTradingOpen(mainItem.contest)}
             onInfo={() => onInfo(mainItem.contest.id)}
             onEnter={() => onEnter(mainItem.contest)}
-            featured={mainItem.contest.slug !== OPENING_BELL_SLUG}
           />
         </section>
       )}
 
       {showFreeStrip && freeItem && (
         <section className="at-free-strip-wrap" data-tour="open-arenas">
+          <p className="at-section-label">Free pit</p>
           <FreeStrip
             item={freeItem}
             tapeLabel={freeTape?.poolLabel ?? 'Free trio'}
             isJoined={joinedContestIds.includes(freeItem.contest.id)}
-            rank={getRank(freeItem.contest.id)}
             participantCount={getParticipantCount(freeItem.contest.id)}
             isTradingOpen={isTradingOpen(freeItem.contest)}
             onInfo={() => onInfo(freeItem.contest.id)}
@@ -167,14 +137,16 @@ export default function ArenaTodayBoard({
         </section>
       )}
 
-      <InviteFriendsHero
-        focusContest={inviteFocus}
-        participantCount={inviteCount}
-        userJoined={inviteJoined}
-        onCopyLink={onCopyReferralLink}
-        onShareLink={onShareReferralLink}
-        copied={referralCopied}
+      <div className="at-zone-divider" aria-hidden />
+
+      <WeekAheadStrip
+        contests={contests}
+        joinedContestIds={joinedContestIds}
+        liveCount={liveCount}
+        onJoinPit={onJoinWeekPit}
+        onInfoPit={onInfoWeekPit}
       />
+
     </div>
   );
 }
@@ -184,57 +156,57 @@ function HeroPitCard({
   dayIndex,
   isJoined,
   rank,
+  liveStats,
   participantCount,
   bellTick,
   hydrated,
   isTradingOpen: tradingOpen,
   onInfo,
   onEnter,
-  featured,
 }: {
   item: ArenaPitItem;
   dayIndex: number;
   isJoined: boolean;
   rank?: number | null;
+  liveStats?: { liveValue: number; pnlPct: number; rank: number | null } | null;
   participantCount: number;
   bellTick: number;
   hydrated: boolean;
   isTradingOpen: boolean;
   onInfo: () => void;
   onEnter: () => void;
-  featured: boolean;
 }) {
   const { contest, scheduled } = item;
   const tape = getContestTapeInfo(contest.slug, dayIndex);
   const timeLabel = formatPitStartTime(contest, scheduled, hydrated);
   const isLive = !scheduled && timeLabel === 'Live';
-  const assets = tape?.assets ?? contest.assets;
-  const fill = getPitFillStatus(contest, participantCount);
-  const showFillUrgency = !isJoined || !fill.isConfirmed;
+  const assetChips = (tape?.assets ?? contest.assets).slice(0, 5);
+  const tagline = contest.tagline?.trim() || PIT_DEFAULT_TAGLINE;
+  const calm = useCalmLiveStats({
+    liveValue: liveStats?.liveValue ?? 0,
+    pnlPct: liveStats?.pnlPct ?? 0,
+    rank: liveStats?.rank ?? rank ?? null,
+    throttleMs: 2500,
+    valueMinDelta: 250,
+  });
+  const showLiveStats = isJoined && liveStats != null;
 
   return (
-    <article
-      className={`at-hero af-feature ${isLive ? 'af-feature-urgent' : ''} ${
-        isJoined ? 'at-hero-joined at-hero-compact' : ''
-      }`}
-    >
-      <div className="af-feature-aurora" aria-hidden />
+    <article className={`at-hero af-feature ${isLive ? 'af-feature-urgent at-hero-live' : ''}`}>
       <div className="af-feature-border" aria-hidden />
+      {isLive && <div className="at-hero-bell-ring" aria-hidden />}
       <div className="af-feature-inner at-hero-inner">
         <div className="at-hero-head">
           <div className="af-feature-live">
-            {isLive ? (
+            {isJoined ? (
+              <span className="at-hero-joined-pill">Rang in</span>
+            ) : isLive ? (
               <>
-                <span className="af-live-dot" aria-hidden />
-                <span className="af-live-text">Live</span>
+                <span className="af-live-dot af-live-dot-green" aria-hidden />
+                <span className="af-live-text af-live-text-muted">Live on the floor</span>
               </>
             ) : (
               <span className="af-badge af-badge-soon">{timeLabel}</span>
-            )}
-            {!scheduled && contest.endsAt && hydrated && (
-              <span className="af-live-clock">
-                Bell <TimeLeftLabel endsAt={contest.endsAt} status={contest.status} tick={bellTick} />
-              </span>
             )}
           </div>
           <button
@@ -248,89 +220,82 @@ function HeroPitCard({
           </button>
         </div>
 
-        <span className="at-hero-badge">{featured ? "Today's main event" : 'Free pit'}</span>
-        <h2 className="at-hero-name">{contest.title}</h2>
-        {tape && <p className="at-hero-tape">{tape.poolLabel}</p>}
-
-        <div className="at-hero-money-banner">
+        <div className="at-hero-prize-zone">
+          <div className="at-hero-floor-visual" aria-hidden />
           <PitMoneyDisplay
             slug={contest.slug}
             totalPrizes={contest.totalPrizes}
+            firstPrize={contest.firstPrize}
             entryFee={contest.entryFee}
             variant="hero"
-            showHook={!isJoined}
           />
-          {!isJoined && (
-            <div className="mt-1.5">
-              <PitPoolSummary slug={contest.slug} />
-            </div>
-          )}
         </div>
 
-        {isJoined ? (
-          <div className="at-hero-you-rail">
-            <div className="at-hero-you-rail-main">
-              <div className="at-hero-joined-rank">
-                <span className="at-hero-joined-label">Your rank</span>
-                <span className="at-hero-joined-val">#{rank ?? '—'}</span>
-              </div>
-              {rank != null && (
-                <PitProjectedPayout
-                  slug={contest.slug}
-                  rank={rank}
-                  className="at-hero-joined-payout"
-                />
-              )}
-            </div>
-            {showFillUrgency && (
-              <PitFillBadge
-                contest={contest}
-                participantCount={participantCount}
-                variant="arena-inline"
-              />
+        <h2 className="at-hero-name">{contest.title}</h2>
+        <p className="at-hero-tagline">{tagline}</p>
+        {tape && <p className="at-hero-tape">{tape.poolLabel}</p>}
+        {assetChips.length > 0 && (
+          <div className="at-hero-assets">
+            {assetChips.map((sym) => (
+              <AssetChip key={sym} symbol={sym} size="sm" />
+            ))}
+            {(tape?.assetCount ?? contest.assets.length) > assetChips.length && (
+              <span className="at-hero-asset-more">
+                +{(tape?.assetCount ?? contest.assets.length) - assetChips.length}
+              </span>
             )}
           </div>
-        ) : (
-          <PitFillBadge contest={contest} participantCount={participantCount} variant="arena" />
         )}
 
-        <div className={`at-hero-stats ${isJoined ? 'at-hero-stats-compact' : ''}`}>
-          {!isJoined && (
-            <div className="at-hero-stat">
-              <span
-                className={`at-hero-stat-val ${contest.entryFee === 0 ? 'at-money-free' : 'at-money-entry'}`}
-              >
-                {entryLabel(contest.entryFee)}
+        <p className="at-hero-meta">
+          <span>{participantCount.toLocaleString()} traders</span>
+          <span className="at-meta-sep">·</span>
+          <span className={contest.entryFee === 0 ? 'at-money-free' : ''}>
+            {contest.entryFee === 0 ? 'Free entry' : `$${contest.entryFee} entry`}
+          </span>
+          {!scheduled && contest.endsAt && hydrated && (
+            <>
+              <span className="at-meta-sep">·</span>
+              <span>
+                Ends in{' '}
+                <TimeLeftLabel endsAt={contest.endsAt} status={contest.status} tick={bellTick} />
               </span>
-              <span className="at-hero-stat-lbl">Entry</span>
-            </div>
+            </>
           )}
-          <div className="at-hero-stat">
-            <span className="at-hero-stat-val">{participantCount.toLocaleString()}</span>
-            <span className="at-hero-stat-lbl">Traders</span>
-          </div>
-          <div className="at-hero-stat">
-            <span className="at-hero-stat-val">{countPaidRanks(getPayoutStructure(contest.slug))}</span>
-            <span className="at-hero-stat-lbl">Paid ranks</span>
-          </div>
-          <div className="at-hero-stat">
-            <span className="at-hero-stat-val">{assets.length}</span>
-            <span className="at-hero-stat-lbl">Assets</span>
-          </div>
-        </div>
+        </p>
 
-        <AssetChips assets={assets} max={isJoined ? 4 : 6} />
-
-        {!isJoined && !scheduled && isLive && contest.slug !== OPENING_BELL_SLUG && (
-          <p className="at-hero-open-hint">{getCanonicalPitOpenLabel(contest.slug)}</p>
+        {showLiveStats && (
+          <div className="at-hero-live-stats">
+            <div className="at-hero-live-main">
+              <span
+                className={`at-hero-live-value ${calm.valueFlash === 'up' ? 'bt-value-flash-up' : calm.valueFlash === 'down' ? 'bt-value-flash-down' : ''}`}
+              >
+                ${calm.displayValue.toLocaleString()}
+              </span>
+              <span
+                className={`at-hero-live-pnl ${calm.displayPnl >= 0 ? 'at-hero-live-pnl-up' : 'at-hero-live-pnl-down'}`}
+              >
+                {calm.displayPnl >= 0 ? '+' : ''}
+                {calm.displayPnl.toFixed(1)}%
+              </span>
+            </div>
+            {calm.displayRank != null && (
+              <span className="at-hero-live-rank">
+                #{calm.displayRank}
+                {!tradingOpen && <span className="at-hero-rank-hint"> · opens in Battles</span>}
+              </span>
+            )}
+          </div>
         )}
 
-        <button
-          type="button"
-          onClick={onEnter}
-          className={`at-cta at-hero-cta ${isJoined ? 'at-hero-cta-in' : ''} ${isJoined && tradingOpen ? 'at-hero-cta-trade' : ''}`}
-        >
-          <span>{ctaLabel(contest, scheduled, isJoined, tradingOpen)}</span>
+        <button type="button" onClick={onEnter} className="at-cta at-hero-cta">
+          <span>
+            {pitActionLabel({
+              isJoined,
+              isTradingOpen: tradingOpen,
+              entryFee: contest.entryFee,
+            })}
+          </span>
           <ArrowRight size={18} strokeWidth={2.5} />
         </button>
       </div>
@@ -342,7 +307,6 @@ function FreeStrip({
   item,
   tapeLabel,
   isJoined,
-  rank,
   participantCount,
   isTradingOpen: tradingOpen,
   onInfo,
@@ -352,7 +316,6 @@ function FreeStrip({
   item: ArenaPitItem;
   tapeLabel: string;
   isJoined: boolean;
-  rank?: number | null;
   participantCount: number;
   isTradingOpen: boolean;
   onInfo: () => void;
@@ -362,30 +325,32 @@ function FreeStrip({
   const { contest, scheduled } = item;
 
   return (
-    <div className={`at-free-strip ${isJoined ? 'at-free-strip-in' : ''}`}>
-      <div className="at-free-strip-copy">
-        <span className="at-free-strip-badge">Free</span>
-        <div className="at-free-strip-text">
-          <span className="at-free-strip-name">{contest.title}</span>
-          <span className="at-free-strip-meta">
-            {tapeLabel} · <span className="at-free-strip-pool">${contest.totalPrizes} pool</span> ·{' '}
-            {traderCount(participantCount)}
-            {isJoined && rank != null && (
-              <>
-                {' '}
-                · <span className="at-free-strip-rank">#{rank}</span>
-              </>
-            )}
-          </span>
+    <div className={`at-secondary-pit at-free-strip ${isJoined ? 'at-secondary-pit-in' : ''}`}>
+      <div className="at-secondary-pit-body">
+        <div className="at-secondary-pit-head">
+          <span className="at-secondary-pit-badge at-secondary-pit-badge-free">Free</span>
+          <span className="at-secondary-pit-title">{contest.title}</span>
         </div>
+        <span className="at-secondary-pit-meta">
+          ${contest.firstPrize.toLocaleString()} 1st
+          <span className="at-secondary-pit-sep">·</span>
+          Free entry
+          <span className="at-secondary-pit-sep">·</span>
+          {traderCount(participantCount)}
+        </span>
+        <span className="at-secondary-pit-sub">{tapeLabel}</span>
         <OpeningBellStreakBadge useServer={useServerStreak} />
       </div>
-      <div className="at-free-strip-actions">
-        <button type="button" onClick={onInfo} className="at-free-strip-info" aria-label="Contest info">
+      <div className="at-secondary-pit-actions">
+        <button type="button" onClick={onInfo} className="at-secondary-pit-info" aria-label="Contest info">
           <Info size={14} />
         </button>
-        <button type="button" onClick={onEnter} className="at-free-strip-join">
-          {joinLabel(contest, scheduled, isJoined, tradingOpen)}
+        <button type="button" onClick={onEnter} className="at-secondary-pit-join">
+          {pitActionLabel({
+            isJoined,
+            isTradingOpen: tradingOpen,
+            entryFee: contest.entryFee,
+          })}
         </button>
       </div>
     </div>

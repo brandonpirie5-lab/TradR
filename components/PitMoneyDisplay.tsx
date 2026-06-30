@@ -56,6 +56,7 @@ export function PitProjectedPayout({
 type PitMoneyDisplayProps = {
   slug?: string | null;
   totalPrizes: number;
+  firstPrize?: number;
   entryFee: number;
   variant?: 'inline' | 'compact' | 'stacked' | 'hero';
   showChip?: boolean;
@@ -66,6 +67,7 @@ type PitMoneyDisplayProps = {
 export default function PitMoneyDisplay({
   slug,
   totalPrizes,
+  firstPrize,
   entryFee,
   variant = 'inline',
   showChip = true,
@@ -106,6 +108,27 @@ export default function PitMoneyDisplay({
     );
   }
 
+  if (variant === 'hero') {
+    const top = firstPrize ?? totalPrizes;
+    const paid = countPaidRanks(structure);
+    return (
+      <div className={rootClass}>
+        <div className="at-pit-money-hero-amount">${top.toLocaleString()}</div>
+        <div className="at-pit-money-hero-sublabel">
+          1st place
+          {firstPrize != null && firstPrize !== totalPrizes && (
+            <>
+              <span className="at-pit-money-hero-sep">·</span>
+              ${totalPrizes.toLocaleString()} pool
+            </>
+          )}
+          <span className="at-pit-money-hero-sep">·</span>
+          top {paid} paid
+        </div>
+      </div>
+    );
+  }
+
   return (
     <span className={rootClass}>
       {showChip && <PitPayoutChip slug={slug} />}
@@ -113,8 +136,7 @@ export default function PitMoneyDisplay({
       <span className="at-money-lbl">pool</span>
       <span className="at-money-sep">·</span>
       {entry}
-      {showSuffix && variant !== 'hero' && <span className="at-money-suffix"> to enter</span>}
-      {showSuffix && variant === 'hero' && <span className="at-money-lbl"> entry</span>}
+      {showSuffix && <span className="at-money-suffix"> to enter</span>}
       {showHook && <span className="at-pit-money-hook text-[10px] text-secondary ml-1">{structure.hook}</span>}
     </span>
   );

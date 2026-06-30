@@ -1,6 +1,7 @@
 import { Contest } from './game-types';
 import { isJoinAllowed, isContestTradingOpen } from './contest-bell';
-import { getCanonicalPitOpenLabel } from './pit-schedule';
+import { PIT_CONTEST_CATALOG } from './pit-contests';
+import { pitCompactLabel, pitJoinLabel } from './pit-cta';
 import {
   buildSlatePitWindow,
   contestMatchesSlug,
@@ -18,6 +19,10 @@ export {
 
 function isContestFull(contest: Pick<Contest, 'entries' | 'maxEntries'>): boolean {
   return contest.entries >= contest.maxEntries;
+}
+
+function entryFeeForSlug(slug: string): number {
+  return PIT_CONTEST_CATALOG.find((c) => c.slug === slug)?.entryFee ?? 0;
 }
 
 function openContestsForSlug(
@@ -114,11 +119,18 @@ export function getWeekJoinState(
   const isLive = contest ? isContestTradingOpen(contest) : false;
   const isFull = contest ? isContestFull(contest) : false;
 
+  const fee = contest?.entryFee ?? joinable?.entryFee ?? entryFeeForSlug(slug);
+
   if (joined) {
     return {
       joined: true,
       canJoin: true,
-      label: isLive ? 'Trade' : 'Rang in',
+      label: pitCompactLabel({
+        isJoined: true,
+        isTradingOpen: isLive,
+        entryFee: fee,
+        canJoin: true,
+      }),
       opensLabel,
       isLive,
       isFull,
@@ -130,7 +142,13 @@ export function getWeekJoinState(
     return {
       joined: false,
       canJoin: false,
-      label: 'Full',
+      label: pitCompactLabel({
+        isJoined: false,
+        isTradingOpen: false,
+        entryFee: fee,
+        canJoin: false,
+        isFull: true,
+      }),
       opensLabel,
       isLive,
       isFull: true,
@@ -139,12 +157,18 @@ export function getWeekJoinState(
   }
 
   if (joinable) {
+    const trading = isContestTradingOpen(joinable);
     return {
       joined: false,
       canJoin: true,
-      label: isContestTradingOpen(joinable) ? 'Join' : 'Ring in',
+      label: pitCompactLabel({
+        isJoined: false,
+        isTradingOpen: trading,
+        entryFee: joinable.entryFee,
+        canJoin: true,
+      }),
       opensLabel,
-      isLive: isContestTradingOpen(joinable),
+      isLive: trading,
       isFull: false,
       contest: joinable,
     };
@@ -157,7 +181,7 @@ export function getWeekJoinState(
     return {
       joined: false,
       canJoin: true,
-      label: 'Ring in',
+      label: pitJoinLabel(fee),
       opensLabel,
       isLive: false,
       isFull: false,
@@ -168,7 +192,13 @@ export function getWeekJoinState(
   return {
     joined: false,
     canJoin: false,
-    label: 'Ended',
+    label: pitCompactLabel({
+      isJoined: false,
+      isTradingOpen: false,
+      entryFee: fee,
+      canJoin: false,
+      ended: true,
+    }),
     opensLabel,
     isLive: false,
     isFull,

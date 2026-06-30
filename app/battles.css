@@ -1,0 +1,1060 @@
+/* ═══════════════════════════════════════════════════════════════
+   TRADR PIT — Battles tab
+   ═══════════════════════════════════════════════════════════════ */
+
+.bt-shell {
+  padding-top: 4px;
+}
+
+.bt-head {
+  margin-bottom: 18px;
+}
+
+.bt-kicker {
+  margin: 0 0 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bt-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.bt-floor-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -8px 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bt-floor-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.45);
+  flex-shrink: 0;
+}
+
+.bt-section-label {
+  margin: 0 0 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bt-active-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bt-other-pits {
+  margin-top: 2px;
+}
+
+.bt-strip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bt-strip-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Shared ticket */
+.bt-ticket {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(10, 10, 10, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bt-ticket-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  z-index: 1;
+}
+
+.bt-ticket-active .bt-ticket-accent {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.bt-ticket-zone-in .bt-ticket-accent {
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.45);
+}
+
+.bt-ticket-zone-in {
+  border-color: rgba(234, 179, 8, 0.28);
+}
+
+.bt-ticket-zone-bubble .bt-ticket-accent {
+  background: #eab308;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.25);
+}
+
+.bt-ticket-zone-bubble {
+  border-color: rgba(234, 179, 8, 0.18);
+}
+
+.bt-ticket-accent-wait {
+  background: rgba(234, 179, 8, 0.35);
+}
+
+.bt-ticket-accent-done {
+  background: var(--accent);
+}
+
+.bt-ticket-inner {
+  position: relative;
+  padding: 14px 14px 16px 16px;
+}
+
+.bt-ticket-active {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bt-ticket-lead {
+  border-color: rgba(234, 179, 8, 0.32);
+  background: linear-gradient(160deg, rgba(234, 179, 8, 0.07) 0%, rgba(10, 10, 10, 0.96) 38%);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(234, 179, 8, 0.06);
+}
+
+.bt-ticket-lead .bt-ticket-inner {
+  padding: 16px 16px 18px 18px;
+}
+
+.bt-ticket-lead .bt-ticket-accent {
+  width: 4px;
+}
+
+.bt-badge-lead {
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 100%);
+  border-color: transparent;
+}
+
+.bt-ticket-name-lead {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.bt-ticket-value-lead {
+  font-size: 32px;
+}
+
+.bt-ticket-hero-stats-lead {
+  margin-bottom: 12px;
+}
+
+.bt-ticket-waiting {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bt-ticket-done {
+  opacity: 0.96;
+}
+
+.bt-ticket-won {
+  border-color: rgba(234, 179, 8, 0.35);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.06) 0%, rgba(10, 10, 10, 0.94) 42%);
+}
+
+.bt-ticket-won-hero {
+  border-color: rgba(234, 179, 8, 0.45);
+  background: linear-gradient(155deg, rgba(234, 179, 8, 0.14) 0%, rgba(10, 10, 10, 0.92) 48%);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(234, 179, 8, 0.12);
+}
+
+.bt-done-celebration {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.28);
+}
+
+.bt-ticket-done-hero-win {
+  align-items: center;
+}
+
+.bt-ticket-done-rank-win {
+  font-size: 40px;
+}
+
+.bt-ticket-payout-hero {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 800;
+  color: #4ade80;
+  line-height: 1.1;
+}
+
+.bt-ticket-payout-hero-win {
+  font-size: 28px;
+}
+
+.bt-ticket-recap-win {
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 55%, #ca8a04 100%);
+  border-color: transparent;
+  font-weight: 800;
+}
+
+.bt-ticket-placed {
+  border-color: rgba(234, 179, 8, 0.2);
+}
+
+.bt-ticket-cashed {
+  border-color: rgba(74, 222, 128, 0.2);
+}
+
+.bt-ticket-cashed .bt-ticket-accent-done {
+  background: #4ade80;
+}
+
+.bt-ticket-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.bt-ticket-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.bt-badge-live {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.22);
+}
+
+.bt-badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.bt-badge-rank {
+  color: var(--accent);
+  background: rgba(234, 179, 8, 0.1);
+  border-color: rgba(234, 179, 8, 0.25);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+.bt-badge-in {
+  color: var(--accent);
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.22);
+}
+
+.bt-badge-soon,
+.bt-badge-done {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.bt-badge-win {
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 100%);
+  border-color: transparent;
+}
+
+.bt-badge-podium {
+  color: var(--accent);
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.28);
+}
+
+.bt-ticket-name {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.bt-ticket-meta {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.bt-ticket-meta-strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.bt-ticket-hero-stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  min-height: 2.75rem;
+}
+
+.bt-ticket-hero-main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bt-ticket-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  min-width: 9.25ch;
+  flex-shrink: 0;
+  transition: color 0.35s ease;
+}
+
+.bt-value-flash-up {
+  color: #4ade80;
+}
+
+.bt-value-flash-down {
+  color: #f87171;
+}
+
+.bt-ticket-pnl-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+  min-width: 4.5ch;
+  flex-shrink: 0;
+}
+
+.bt-ticket-pnl-pill-up {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.bt-ticket-pnl-pill-down {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.bt-ticket-hero-side {
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 4.75rem;
+}
+
+.bt-ticket-hero-label {
+  display: block;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.bt-ticket-hero-time {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.bt-ticket-assets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bt-ticket-asset-more {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bt-ticket-info {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bt-ticket-info:active {
+  color: var(--text-secondary);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.bt-ticket-zone {
+  margin-bottom: 10px;
+}
+
+.bt-ticket-zone .money-zone-bar {
+  margin-bottom: 0;
+}
+
+.bt-ticket-zone .money-zone-bar--hero {
+  min-height: 7.25rem;
+}
+
+.bt-ticket-zone .money-zone-bar--hero .money-zone-headline-row {
+  min-height: 1.35rem;
+}
+
+.bt-ticket-zone .money-zone-bar--hero .money-zone-detail {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.35rem;
+}
+
+.bt-ticket-zone .money-zone-bar--compact {
+  min-height: 5.75rem;
+}
+
+.bt-ticket-trades {
+  margin-bottom: 10px;
+}
+
+.bt-ticket-positions {
+  margin-bottom: 12px;
+}
+
+.bt-ticket-positions-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bt-ticket-positions-list {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.bt-ticket-position-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.bt-ticket-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 55%, #ca8a04 100%);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.12), 0 6px 18px rgba(234, 179, 8, 0.18);
+}
+
+.bt-ticket-cta:active {
+  transform: translateY(1px);
+}
+
+.bt-ticket-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bt-ticket-action {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bt-ticket-action:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.bt-ticket-action-full {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bt-ticket-action-full:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Waiting ticket */
+.bt-ticket-wait-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.bt-ticket-wait-prize-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bt-ticket-wait-prize {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.bt-ticket-wait-prize-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bt-ticket-wait-foot {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* Done ticket */
+.bt-ticket-done-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bt-ticket-done-rank-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bt-ticket-done-rank {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.bt-ticket-done-rank-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bt-ticket-done-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+
+.bt-ticket-done-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bt-ticket-payout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+.bt-ticket-done-payout-hint {
+  font-size: 10px !important;
+  color: var(--text-muted) !important;
+  margin-top: 0 !important;
+}
+
+.bt-ticket-recap {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.bt-ticket-recap:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Empty + footer */
+.bt-upcoming-empty {
+  text-align: center;
+  padding: 36px 20px;
+  margin-bottom: 4px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bt-upcoming-empty-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.bt-upcoming-empty-copy {
+  margin: 0;
+  max-width: 260px;
+  margin-inline: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.bt-arena-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.22);
+}
+
+.bt-arena-link:active {
+  background: rgba(234, 179, 8, 0.1);
+  border-color: rgba(234, 179, 8, 0.32);
+}
+
+.bt-arena-link-spaced {
+  margin-top: 20px;
+}
+
+/* Compact active strips */
+.bt-strip-wrap {
+  border-radius: 14px;
+}
+
+.bt-strip {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.bt-strip-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.bt-strip-zone-in .bt-strip-accent {
+  background: var(--accent);
+}
+
+.bt-strip-zone-bubble .bt-strip-accent {
+  background: #eab308;
+}
+
+.bt-strip-open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.bt-strip-main-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 12px 11px 14px;
+  text-align: left;
+}
+
+.bt-strip-rank {
+  flex-shrink: 0;
+  width: 34px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.bt-strip-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.bt-strip-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bt-strip-zone-line {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bt-strip-stats {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.bt-strip-value {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+
+.bt-strip-pnl {
+  display: block;
+  margin-top: 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bt-strip-pnl-up {
+  color: #4ade80;
+}
+
+.bt-strip-pnl-down {
+  color: #f87171;
+}
+
+.bt-strip-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.bt-strip-trade {
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 55%, #ca8a04 100%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12);
+}
+
+.bt-strip-trade:active {
+  transform: translateY(1px);
+}
+
+.bt-strip-stack .bt-ticket {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: -1px;
+}
+
+.bt-arena-link-arrow {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+/* Settlement modal */
+.settlement-card {
+  background: linear-gradient(160deg, rgba(234, 179, 8, 0.05) 0%, rgba(10, 10, 10, 0.96) 42%);
+}
+
+.settlement-card-win {
+  background: linear-gradient(155deg, rgba(234, 179, 8, 0.14) 0%, rgba(10, 10, 10, 0.92) 48%);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.settlement-card-podium {
+  background: linear-gradient(160deg, rgba(234, 179, 8, 0.08) 0%, rgba(10, 10, 10, 0.94) 45%);
+}
+
+.settlement-card-void {
+  background: rgba(10, 10, 10, 0.96);
+}
+
+.settlement-card-kicker {
+  margin-bottom: 12px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.settlement-prices {
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: left;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.settlement-prices-kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.settlement-prices-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.settlement-prices-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.settlement-prices-row span:last-child {
+  color: var(--accent);
+}
+
+.settlement-done-link {
+  margin-top: 0;
+}
+
+.bt-done-fresh-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(234, 179, 8, 0.28);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, rgba(10, 10, 10, 0.6) 100%);
+  animation: bt-done-banner-in 0.45s ease-out;
+}
+
+.bt-done-fresh-kicker {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.bt-done-fresh-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bt-done-highlight-wrap {
+  scroll-margin-top: 88px;
+}
+
+.bt-ticket-done-highlight {
+  animation: bt-done-pulse 2.4s ease-out 1;
+}
+
+.bt-ticket-done-confetti::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(234, 179, 8, 0.35) 0 2px, transparent 3px),
+    radial-gradient(circle at 80% 30%, rgba(74, 222, 128, 0.3) 0 2px, transparent 3px),
+    radial-gradient(circle at 50% 80%, rgba(234, 179, 8, 0.25) 0 2px, transparent 3px);
+  animation: bt-confetti-fade 2.5s ease-out forwards;
+}
+
+@keyframes bt-done-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bt-done-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.55);
+  }
+  40% {
+    box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+  }
+}
+
+@keyframes bt-confetti-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

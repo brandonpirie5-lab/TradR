@@ -4,6 +4,7 @@ import React from 'react';
 import { Contest } from '../lib/game-types';
 import ArenaTodayBoard from './ArenaTodayBoard';
 
+
 export type ArenaPitItem = { contest: Contest; scheduled: boolean };
 
 type ArenaHomeProps = {
@@ -20,9 +21,7 @@ type ArenaHomeProps = {
   onJoinWeekPit: (slug: string, dayIndex: number) => void;
   onInfoWeekPit: (slug: string, dayIndex: number) => void;
   useServerStreak?: boolean;
-  onCopyReferralLink: () => void;
-  onShareReferralLink: () => void;
-  referralCopied?: boolean;
+  getPitLiveStats?: (contestId: number) => { liveValue: number; pnlPct: number; rank: number | null } | null;
 };
 
 export default function ArenaHome({
@@ -39,9 +38,7 @@ export default function ArenaHome({
   onJoinWeekPit,
   onInfoWeekPit,
   useServerStreak = false,
-  onCopyReferralLink,
-  onShareReferralLink,
-  referralCopied = false,
+  getPitLiveStats,
 }: ArenaHomeProps) {
   if (!pits.length) {
     return (
@@ -70,9 +67,7 @@ export default function ArenaHome({
         onJoinWeekPit={onJoinWeekPit}
         onInfoWeekPit={onInfoWeekPit}
         useServerStreak={useServerStreak}
-        onCopyReferralLink={onCopyReferralLink}
-        onShareReferralLink={onShareReferralLink}
-        referralCopied={referralCopied}
+        getPitLiveStats={getPitLiveStats}
       />
     </div>
   );
