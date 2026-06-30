@@ -398,12 +398,15 @@ export default function TradR() {
 
   useEffect(() => {
     if (!usingServerGame || activeTab !== 'leaderboard' || vaultMode !== 'pit' || !activeVaultContestId) return;
+    const contest = contests.find((c) => c.id === activeVaultContestId);
+    if (contest?.assets?.length) void fetchLivePrices(contest.assets);
     void refreshLeaderboard(activeVaultContestId);
     const interval = setInterval(() => {
+      if (contest?.assets?.length) void fetchLivePrices(contest.assets);
       void refreshLeaderboard(activeVaultContestId);
     }, 15000);
     return () => clearInterval(interval);
-  }, [activeTab, vaultMode, activeVaultContestId, usingServerGame, refreshLeaderboard]);
+  }, [activeTab, vaultMode, activeVaultContestId, usingServerGame, refreshLeaderboard, fetchLivePrices, contests]);
 
   const yourRank = dynamicVault.find((e) => e.isYou)?.rank || (dynamicVault.length ? dynamicVault.length + 1 : 1);
   const vaultPlayerCount = dynamicVault.length;
@@ -1019,7 +1022,15 @@ export default function TradR() {
               setVaultContestId(id);
               refreshLeaderboard(id);
             }}
-            onRefreshPit={() => activeVaultContestId && refreshLeaderboard(activeVaultContestId)}
+            onRefreshPit={async () => {
+              if (!activeVaultContestId) return;
+              try {
+                await refreshLeaderboard(activeVaultContestId);
+                showToast('Rankings updated');
+              } catch {
+                showToast('Could not refresh rankings', 'error');
+              }
+            }}
             onGoArena={() => setActiveTab('home')}
           />
         )}

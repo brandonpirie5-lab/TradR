@@ -56,6 +56,9 @@ export interface LeaderboardEntry {
   portfolioValue: number;
   rank: number;
   isYou?: boolean;
+  /** When present, client recomputes portfolioValue from live prices */
+  cash?: number;
+  positions?: Position[];
 }
 
 export interface GlobalLeaderboardEntry {

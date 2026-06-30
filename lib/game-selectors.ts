@@ -46,15 +46,26 @@ export function buildContestBoard(params: {
   if (!contestId) return [];
 
   const part = participations[contestId];
-  const getVal = (p: Participation) => calcPortfolioValue(p, prices);
+  const getVal = (p: { cash: number; positions: Participation['positions'] }) =>
+    calcPortfolioValue(p, prices);
+
+  const liveEntryValue = (entry: LeaderboardEntry): number => {
+    const isYou = entry.isYou || (userId != null && entry.userId === userId);
+    if (isYou && part) return getVal(part);
+    if (entry.cash != null && entry.positions) {
+      return getVal({ cash: entry.cash, positions: entry.positions });
+    }
+    return entry.portfolioValue;
+  };
 
   const serverBoard = leaderboardByContest[contestId];
   if (serverBoard?.length) {
-    if (!part) return serverBoard;
-    const yourLiveValue = getVal(part);
-    const merged = serverBoard.map((e) =>
-      e.isYou ? { ...e, portfolioValue: yourLiveValue } : e
-    );
+    const hasLivePrices = Object.keys(prices).length > 0;
+    const merged = serverBoard.map((e) => {
+      const isYou = e.isYou || (userId != null && e.userId === userId);
+      const portfolioValue = hasLivePrices ? liveEntryValue({ ...e, isYou }) : e.portfolioValue;
+      return { ...e, isYou, portfolioValue };
+    });
     return merged
       .sort((a, b) => b.portfolioValue - a.portfolioValue)
       .map((e, i) => ({ ...e, rank: i + 1 }));

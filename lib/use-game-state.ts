@@ -447,7 +447,7 @@ export function useGameState({
 
   const dynamicVault = useMemo(
     () => getContestBoard(activeVaultContestId),
-    [getContestBoard, activeVaultContestId]
+    [getContestBoard, activeVaultContestId, prices, participations, leaderboardByContest, bellTick]
   );
 
   const arenaPitList = useMemo(

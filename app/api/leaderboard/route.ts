@@ -41,14 +41,17 @@ export async function GET(request: NextRequest) {
   const profileMap = new Map((profiles || []).map((p) => [p.id, p.username || 'trader']));
 
   const ranked = (parts || [])
-    .map((p) => ({
-      userId: p.user_id as string,
-      username: `@${profileMap.get(p.user_id) || 'trader'}`,
-      portfolioValue: getPortfolioValue(
-        { cash: Number(p.cash), positions: normalizePositions(p.positions) },
-        prices
-      ),
-    }))
+    .map((p) => {
+      const cash = Number(p.cash);
+      const positions = normalizePositions(p.positions);
+      return {
+        userId: p.user_id as string,
+        username: `@${profileMap.get(p.user_id) || 'trader'}`,
+        cash,
+        positions,
+        portfolioValue: getPortfolioValue({ cash, positions }, prices),
+      };
+    })
     .sort((a, b) => b.portfolioValue - a.portfolioValue);
 
   const entries: LeaderboardEntry[] = ranked.map((row, idx) => ({
