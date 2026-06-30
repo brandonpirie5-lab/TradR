@@ -373,10 +373,10 @@ export function useGameState({
   const getLiveParticipantCount = useCallback(
     (contestId: number): number => {
       if (usingServerGame) {
-        const board = leaderboardByContest[contestId];
-        if (board?.length) return board.length;
         const contest = contests.find((c) => c.id === contestId);
         if (contest?.entries) return contest.entries;
+        const board = leaderboardByContest[contestId];
+        if (board?.length) return board.length;
         return participations[contestId] ? 1 : 0;
       }
       return participations[contestId] ? 1 : 0;

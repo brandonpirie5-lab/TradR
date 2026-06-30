@@ -53,6 +53,7 @@ import { useGameState, type SettlementResult, type TradeCompletePayload } from '
 import { initialContests } from '../lib/game-constants';
 import { getPitFillStatus } from '../lib/contest-fill';
 import JoinPitFlash from '../components/JoinPitFlash';
+import HowItWorksModal from '../components/HowItWorksModal';
 import PitMomentBanner from '../components/PitMomentBanner';
 import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
 import { payoutForContestRank } from '../lib/pit-payouts';
@@ -124,6 +125,7 @@ export default function TradR() {
   const [arenaTourStep, setArenaTourStep] = useState(0);
   const [joinFlashTitle, setJoinFlashTitle] = useState<string | null>(null);
   const [pitMoment, setPitMoment] = useState<PitMoment | null>(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [rankShake, setRankShake] = useState(false);
   const [vaultRankAnim, setVaultRankAnim] = useState<'up' | 'down' | null>(null);
 
@@ -926,6 +928,9 @@ export default function TradR() {
                 rank: rankInContest(contestId),
               };
             }}
+            getContestBoard={getContestBoard}
+            onViewLeaderboard={openLeaderboard}
+            onShowHowItWorks={() => setShowHowItWorks(true)}
           />
         )}
 
@@ -1225,6 +1230,8 @@ export default function TradR() {
       {joinFlashTitle && (
         <JoinPitFlash title={joinFlashTitle} onDone={() => setJoinFlashTitle(null)} />
       )}
+
+      {showHowItWorks && <HowItWorksModal onClose={() => setShowHowItWorks(false)} />}
 
       {selectedChartSymbol && !tradingContestId && (
         <div className="fixed inset-0 bg-black/92 z-[58] flex items-end justify-center p-4 pb-24">

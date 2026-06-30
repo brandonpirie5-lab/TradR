@@ -12,9 +12,11 @@ import { formatPitStartTime } from '../lib/pit-schedule';
 import { getContestTapeInfo, FEATURED_PIT_BY_DAY } from '../lib/tape-week';
 import { TimeLeftLabel } from './BellCountdown';
 import type { ArenaPitItem } from './ArenaHome';
-import AssetChip from './AssetChip';
 import WeekAheadStrip from './WeekAheadStrip';
 import ArenaTapeTicker from './ArenaTapeTicker';
+import ArenaTapeLeaders from './ArenaTapeLeaders';
+import { formatFloorTraders, formatFloorTradersShort } from '../lib/format-floor-count';
+import type { LeaderboardEntry } from '../lib/game-types';
 import { getOrderedArenaTapeSymbols } from '../lib/pit-asset-schedule';
 import { DAY_THEMES } from '../lib/tape-week';
 
@@ -37,11 +39,10 @@ type ArenaTodayBoardProps = {
   onInfoWeekPit: (slug: string, dayIndex: number) => void;
   useServerStreak?: boolean;
   getPitLiveStats?: (contestId: number) => { liveValue: number; pnlPct: number; rank: number | null } | null;
+  getContestBoard?: (contestId: number) => LeaderboardEntry[];
+  onViewLeaderboard?: (contestId: number) => void;
+  onShowHowItWorks?: () => void;
 };
-
-function traderCount(n: number): string {
-  return n === 1 ? '1 trader' : `${n} traders`;
-}
 
 export default function ArenaTodayBoard({
   pits,
@@ -58,6 +59,9 @@ export default function ArenaTodayBoard({
   onInfoWeekPit,
   useServerStreak = false,
   getPitLiveStats,
+  getContestBoard,
+  onViewLeaderboard,
+  onShowHowItWorks,
 }: ArenaTodayBoardProps) {
   const dayIndex = new Date().getDay();
   const featured = FEATURED_PIT_BY_DAY[dayIndex];
@@ -81,8 +85,15 @@ export default function ArenaTodayBoard({
     ...(freeTape?.assets ?? []),
   ]);
 
+  const mainBoard =
+    mainItem && getContestBoard ? getContestBoard(mainItem.contest.id) : [];
+
   return (
     <div className="at-board at-board-v3">
+      <p className="at-value-hook">
+        $100K virtual portfolio · live market prices · real prize pools
+      </p>
+
       <ArenaTapeTicker symbols={tickerSymbols} highlightSymbols={[...todayTapeSymbols]} />
 
       <p className="at-floor-status">
@@ -118,6 +129,13 @@ export default function ArenaTodayBoard({
             onInfo={() => onInfo(mainItem.contest.id)}
             onEnter={() => onEnter(mainItem.contest)}
           />
+          {mainItem && mainBoard.length >= 2 && onViewLeaderboard && (
+            <ArenaTapeLeaders
+              contest={mainItem.contest}
+              entries={mainBoard}
+              onViewAll={() => onViewLeaderboard(mainItem.contest.id)}
+            />
+          )}
         </section>
       )}
 
@@ -147,9 +165,19 @@ export default function ArenaTodayBoard({
         onInfoPit={onInfoWeekPit}
       />
 
-      <p className="at-arena-footer">
-        <strong>Fake money. Real ego.</strong> Ring in on the floor, trade in Battles, climb the Vault.
-      </p>
+      <div className="at-arena-footer">
+        <p className="at-arena-footer-tagline">
+          <strong>Fake money. Real ego.</strong> Ring in on the floor, trade in Battles, climb the Vault.
+        </p>
+        <p className="at-arena-footer-trust">
+          Skill-based fantasy contest — virtual trades only.{' '}
+          {onShowHowItWorks ? (
+            <button type="button" className="at-arena-footer-link" onClick={onShowHowItWorks}>
+              How it works
+            </button>
+          ) : null}
+        </p>
+      </div>
     </div>
   );
 }
@@ -183,7 +211,8 @@ function HeroPitCard({
   const tape = getContestTapeInfo(contest.slug, dayIndex);
   const timeLabel = formatPitStartTime(contest, scheduled, hydrated);
   const isLive = !scheduled && timeLabel === 'Live';
-  const assetChips = (tape?.assets ?? contest.assets).slice(0, 5);
+  const assetList = (tape?.assets ?? contest.assets).slice(0, 4);
+  const assetOverflow = Math.max(0, (tape?.assetCount ?? contest.assets.length) - assetList.length);
   const tagline = contest.tagline?.trim() || PIT_DEFAULT_TAGLINE;
   const calm = useCalmLiveStats({
     liveValue: liveStats?.liveValue ?? 0,
@@ -235,23 +264,10 @@ function HeroPitCard({
         </div>
 
         <h2 className="at-hero-name">{contest.title}</h2>
-        <p className="at-hero-tagline">{tagline}</p>
-        {tape && <p className="at-hero-tape">{tape.poolLabel}</p>}
-        {assetChips.length > 0 && (
-          <div className="at-hero-assets">
-            {assetChips.map((sym) => (
-              <AssetChip key={sym} symbol={sym} size="sm" />
-            ))}
-            {(tape?.assetCount ?? contest.assets.length) > assetChips.length && (
-              <span className="at-hero-asset-more">
-                +{(tape?.assetCount ?? contest.assets.length) - assetChips.length}
-              </span>
-            )}
-          </div>
-        )}
+        <p className="at-hero-hook">{tagline}</p>
 
         <p className="at-hero-meta">
-          <span>{participantCount.toLocaleString()} traders</span>
+          <span>{formatFloorTraders(participantCount)}</span>
           <span className="at-meta-sep">·</span>
           <span className={contest.entryFee === 0 ? 'at-money-free' : ''}>
             {contest.entryFee === 0 ? 'Free entry' : `$${contest.entryFee} entry`}
@@ -266,6 +282,19 @@ function HeroPitCard({
             </>
           )}
         </p>
+
+        {(tape || assetList.length > 0) && (
+          <p className="at-hero-tape-compact">
+            {tape?.poolLabel}
+            {tape && assetList.length > 0 && <span className="at-meta-sep"> · </span>}
+            {assetList.length > 0 && (
+              <span className="at-hero-tape-symbols">
+                {assetList.join(' · ')}
+                {assetOverflow > 0 ? ` +${assetOverflow}` : ''}
+              </span>
+            )}
+          </p>
+        )}
 
         {showLiveStats && (
           <div className="at-hero-live-stats">
@@ -339,7 +368,7 @@ function FreeStrip({
           <span className="at-secondary-pit-sep">·</span>
           Free entry
           <span className="at-secondary-pit-sep">·</span>
-          {traderCount(participantCount)}
+          {formatFloorTradersShort(participantCount)}
         </span>
         <span className="at-secondary-pit-sub">{tapeLabel}</span>
         <OpeningBellStreakBadge useServer={useServerStreak} />

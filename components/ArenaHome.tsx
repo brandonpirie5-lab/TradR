@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Contest } from '../lib/game-types';
+import { Contest, LeaderboardEntry } from '../lib/game-types';
 import ArenaTodayBoard from './ArenaTodayBoard';
 
 
@@ -22,6 +22,9 @@ type ArenaHomeProps = {
   onInfoWeekPit: (slug: string, dayIndex: number) => void;
   useServerStreak?: boolean;
   getPitLiveStats?: (contestId: number) => { liveValue: number; pnlPct: number; rank: number | null } | null;
+  getContestBoard?: (contestId: number) => LeaderboardEntry[];
+  onViewLeaderboard?: (contestId: number) => void;
+  onShowHowItWorks?: () => void;
 };
 
 export default function ArenaHome({
@@ -39,6 +42,9 @@ export default function ArenaHome({
   onInfoWeekPit,
   useServerStreak = false,
   getPitLiveStats,
+  getContestBoard,
+  onViewLeaderboard,
+  onShowHowItWorks,
 }: ArenaHomeProps) {
   if (!pits.length) {
     return (
@@ -68,6 +74,9 @@ export default function ArenaHome({
         onInfoWeekPit={onInfoWeekPit}
         useServerStreak={useServerStreak}
         getPitLiveStats={getPitLiveStats}
+        getContestBoard={getContestBoard}
+        onViewLeaderboard={onViewLeaderboard}
+        onShowHowItWorks={onShowHowItWorks}
       />
     </div>
   );

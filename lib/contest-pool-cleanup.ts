@@ -75,8 +75,17 @@ export async function closeDuplicateAndExpiredContests(
     groups.set(key, list);
   }
 
+  const participationCounts = await fetchParticipationCounts(
+    admin,
+    live.filter((r) => !closeIds.has(r.id)).map((r) => r.id)
+  );
+
   for (const list of groups.values()) {
-    const sorted = [...list].sort((a, b) => b.id - a.id);
+    const sorted = [...list].sort((a, b) => {
+      const countDiff = (participationCounts[b.id] ?? 0) - (participationCounts[a.id] ?? 0);
+      if (countDiff !== 0) return countDiff;
+      return b.id - a.id;
+    });
     for (const dup of sorted.slice(1)) closeIds.add(dup.id);
   }
 
@@ -101,7 +110,31 @@ export async function closeDuplicateAndExpiredContests(
   };
 }
 
-export function dedupeContestRows<T extends LiveRow>(rows: T[], now = new Date()): T[] {
+async function fetchParticipationCounts(
+  admin: SupabaseClient,
+  contestIds: number[]
+): Promise<Record<number, number>> {
+  const counts: Record<number, number> = {};
+  if (!contestIds.length) return counts;
+
+  const { data, error } = await admin
+    .from('participations')
+    .select('contest_id')
+    .in('contest_id', contestIds);
+
+  if (error) throw error;
+
+  for (const row of data || []) {
+    counts[row.contest_id] = (counts[row.contest_id] || 0) + 1;
+  }
+  return counts;
+}
+
+export function dedupeContestRows<T extends LiveRow>(
+  rows: T[],
+  now = new Date(),
+  entryCounts?: Record<number, number>
+): T[] {
   const byKey = new Map<string, T>();
   const nowMs = now.getTime();
 
@@ -109,7 +142,15 @@ export function dedupeContestRows<T extends LiveRow>(rows: T[], now = new Date()
     if (row.ends_at && new Date(row.ends_at).getTime() <= nowMs) continue;
     const key = contestDedupeKey(row, now);
     const existing = byKey.get(key);
-    if (!existing || row.id > existing.id) byKey.set(key, row);
+    if (!existing) {
+      byKey.set(key, row);
+      continue;
+    }
+    const existingEntries = entryCounts?.[existing.id] ?? 0;
+    const rowEntries = entryCounts?.[row.id] ?? 0;
+    if (rowEntries > existingEntries || (rowEntries === existingEntries && row.id > existing.id)) {
+      byKey.set(key, row);
+    }
   }
 
   return [...byKey.values()].sort((a, b) => a.id - b.id);

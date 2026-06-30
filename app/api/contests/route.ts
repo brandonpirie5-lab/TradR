@@ -37,7 +37,7 @@ export async function GET() {
     entryCounts[row.contest_id] = (entryCounts[row.contest_id] || 0) + 1;
   }
 
-  const deduped = dedupeContestRows(contests || []);
+  const deduped = dedupeContestRows(contests || [], new Date(), entryCounts);
   const payload: DbContest[] = deduped.map((c) => ({
     ...c,
     assets: c.assets || [],

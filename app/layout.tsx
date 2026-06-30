@@ -21,6 +21,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TradR Pit • Fake Money, Real Ego",
   description: "Live multiplayer fantasy trading. Ring in free, size up in paid pits, read the tape when the bell hits. Outtrade the room.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "TradR Pit",
+    statusBarStyle: "black-translucent",
+  },
   icons: {
     icon: "/favicon.ico",
   },
@@ -36,7 +42,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-[var(--text)]">{children}</body>
+      <body className={`${geistSans.className} min-h-full flex flex-col bg-background text-[var(--text)]`}>{children}</body>
     </html>
   );
 }
