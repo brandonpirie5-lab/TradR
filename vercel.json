@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/pit-cycle",
       "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/pit-bots",
-      "schedule": "0 */2 * * *"
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { runPitCycle } from '@/lib/pit-cycle';
+import { runBotCycle } from '@/lib/pit-bots';
 
 /** Vercel Cron + manual ops: settle expired pits, then spawn fresh ones. */
 export async function GET(request: NextRequest) {
@@ -19,6 +20,14 @@ export async function GET(request: NextRequest) {
 
   const cycle = await runPitCycle(admin);
 
+  let bots: { ok: boolean; error?: string } = { ok: false };
+  try {
+    await runBotCycle(admin, Math.floor(Date.now() / 1000));
+    bots = { ok: true };
+  } catch (e) {
+    bots = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
   return Response.json({
     ok: true,
     timestamp: new Date().toISOString(),
@@ -32,6 +41,7 @@ export async function GET(request: NextRequest) {
     rotation: cycle.rotation,
     spawned: cycle.spawned,
     weekSlate: cycle.weekSlate,
+    bots,
   });
 }
 
