@@ -1,20 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trophy, User, LayoutGrid, Zap } from 'lucide-react';
+import { Trophy, User, LayoutGrid, DollarSign } from 'lucide-react';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES } from '../lib/daily-pit-config';
+import { PLATFORM_RAKE_PCT } from '../lib/pit-pool-math';
 
 export default function OnboardingPit({
   onComplete,
   onSetUsername,
-  onJoinFreePit,
+  onJoinPit,
+  onDeposit,
   defaultUsername,
-  freePitName = 'Opening Bell',
+  balance = 0,
+  stripeEnabled = false,
 }: {
   onComplete: (opts?: { skipped?: boolean }) => void;
   onSetUsername: (name: string) => Promise<void>;
-  onJoinFreePit: () => Promise<void>;
+  onJoinPit: () => Promise<void>;
+  onDeposit?: () => void;
   defaultUsername?: string;
-  freePitName?: string;
+  balance?: number;
+  stripeEnabled?: boolean;
 }) {
   const [step, setStep] = useState(0);
   const [username, setUsername] = useState(defaultUsername || '');
@@ -24,27 +30,28 @@ export default function OnboardingPit({
     {
       icon: Trophy,
       title: 'Welcome to TradR Pit',
-      body: 'Live trading contests with $100,000 in play money. Out-trade the room before the bell rings — top spots can win real prizes.',
+      body: `$${DAILY_ENTRY_FEE} to enter today's pit. Trade a $100K virtual portfolio — top half split the prize pool.`,
     },
     {
       icon: User,
       title: 'Pick your display name',
-      body: 'This is how you show up on the leaderboard and live tape. Keep it simple — your family will see it.',
+      body: 'This is how you show up on the leaderboard.',
     },
     {
       icon: LayoutGrid,
-      title: 'Three tabs, that’s it',
+      title: 'Three tabs',
       body: null as string | null,
     },
     {
-      icon: Zap,
-      title: 'Join your first pit — free',
-      body: `${freePitName} costs nothing to enter. We’ll ring you in, then you can make your first trade when the bell opens.`,
+      icon: DollarSign,
+      title: 'Fund & join',
+      body: `Deposit to your TradR wallet, then ring in. Pool grows with entries (${PLATFORM_RAKE_PCT}% platform fee). Min ${DAILY_MIN_ENTRIES} traders or the pit voids and refunds.`,
     },
   ];
 
   const StepIcon = steps[step].icon;
   const totalSteps = steps.length;
+  const canJoin = balance >= DAILY_ENTRY_FEE;
 
   const finish = (opts?: { skipped?: boolean }) => {
     onComplete(opts);
@@ -64,11 +71,15 @@ export default function OnboardingPit({
       return;
     }
     if (step === 3) {
+      if (!canJoin) {
+        onDeposit?.();
+        return;
+      }
       setLoading(true);
       try {
-        await onJoinFreePit();
+        await onJoinPit();
       } catch {
-        /* join optional */
+        /* optional */
       } finally {
         setLoading(false);
         finish();
@@ -80,12 +91,16 @@ export default function OnboardingPit({
 
   const ctaLabel =
     step === 0
-      ? 'LET’S GO'
+      ? 'LET\'S GO'
       : step === 1
         ? 'SAVE NAME'
         : step === 2
           ? 'GOT IT'
-          : 'JOIN FREE PIT';
+          : canJoin
+            ? `JOIN · $${DAILY_ENTRY_FEE}`
+            : stripeEnabled
+              ? 'DEPOSIT TO JOIN'
+              : 'ADD FUNDS';
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center p-5">
@@ -134,16 +149,24 @@ export default function OnboardingPit({
           <div className="mb-5 rounded-xl border border-card bg-surface/50 p-4 text-left text-sm text-secondary space-y-3">
             <div>
               <span className="text-accent font-bold">Arena</span>
-              <span className="text-muted"> — browse today’s pits and ring in with one tap.</span>
+              <span className="text-muted"> — see today&apos;s pit and ring in.</span>
             </div>
             <div>
               <span className="text-accent font-bold">Battles</span>
-              <span className="text-muted"> — trade stocks & crypto when your pit opens.</span>
+              <span className="text-muted"> — trade when the bell opens.</span>
             </div>
             <div>
               <span className="text-accent font-bold">Vault</span>
-              <span className="text-muted"> — live leaderboard: who’s winning right now.</span>
+              <span className="text-muted"> — live leaderboard.</span>
             </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="mb-5 rounded-xl border border-card bg-surface/50 p-3 text-center">
+            <div className="text-[10px] text-muted uppercase tracking-widest mb-1">Wallet balance</div>
+            <div className="font-mono text-2xl text-accent font-bold">${balance.toLocaleString()}</div>
+            <div className="text-[11px] text-muted mt-1">${DAILY_ENTRY_FEE} required to join</div>
           </div>
         )}
 
@@ -157,7 +180,7 @@ export default function OnboardingPit({
 
         {step === 3 && (
           <button onClick={() => finish({ skipped: true })} className="w-full mt-2 text-xs text-muted py-2">
-            Skip — look around first
+            Skip — browse first
           </button>
         )}
 

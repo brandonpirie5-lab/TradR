@@ -1,87 +1,40 @@
-import { Contest, DbContest, dbContestToContest } from './game-types';
+import {
+  Contest,
+  DbContest,
+  dbContestToContest,
+  formatContestDate,
+  formatTimeLeft,
+} from './game-types';
 import { isContestTradingOpen, isJoinAllowed, startsMsRemaining, isContestStarted } from './contest-bell';
 import { getContestDurationHours } from './contest-rules';
 import {
   applyScheduleToContestAssets,
   describeContestTape,
-  getContestAssetSchedule,
   resolveContestAssets,
 } from './pit-asset-schedule';
-import { getCatalogPayoutFields } from './pit-payouts';
+import { getCatalogPayoutFields, PIT_PAYOUT_BY_SLUG } from './pit-payouts';
 import { computeEffectivePool, getLiveFirstPrize } from './pit-pool-math';
 import { buildDemoPitWindow } from './pit-schedule';
-import { buildWeekSlateDemoContests } from './week-slate';
+import {
+  DAILY_ASSETS,
+  DAILY_ENTRY_FEE,
+  DAILY_PIT_SLUG,
+} from './daily-pit-config';
 
-export const OPENING_BELL_SLUG = 'opening-bell';
+/** @deprecated Use DAILY_PIT_SLUG — kept for legacy imports */
+export const OPENING_BELL_SLUG = DAILY_PIT_SLUG;
 
 const CATALOG_SPECS = [
   {
-    slug: OPENING_BELL_SLUG,
-    title: 'Opening Bell Bloodbath',
-    tagline: 'Free entry. Three names a day — tape follows the market week.',
-    entryFee: 0,
-    assets: ['BTC', 'ETH', 'SOL'],
-    badge: 'FREE TAPE',
-  },
-  {
-    slug: 'the-liquidation',
-    title: 'Liquidation Lounge',
-    tagline: '$5 buy-in. Thin book, thick coping. The bell shows no mercy.',
-    entryFee: 5,
-    assets: ['SPY', 'QQQ', 'NVDA', 'BTC', 'ETH'],
-    badge: 'DAILY REKT',
-  },
-  {
-    slug: 'full-send',
-    title: 'Full Port Disorder',
-    tagline: 'Diversification is banned. Size is the whole strategy.',
-    entryFee: 10,
-    assets: ['AAPL', 'TSLA', 'BTC', 'SOL', 'DOGE'],
-    badge: 'ALL IN',
-  },
-  {
-    slug: 'triple-stack',
-    title: 'Triple Stack Therapy',
-    tagline: 'Three tickers. One fragile trader. Stack or spiral.',
-    entryFee: 10,
-    assets: ['NVDA', 'META', 'BTC'],
-    badge: '3-BAG MAX',
-  },
-  {
-    slug: 'weekend-carnage',
-    title: 'Saturday Slaughterhouse',
-    tagline: 'Your plans can wait. Weekend candles hit different.',
-    entryFee: 10,
-    assets: ['SPY', 'TSLA', 'BTC', 'ETH', 'SOL'],
-    badge: 'OFF-HOURS',
-  },
-  {
-    slug: 'tradfi-vs-degen',
-    title: 'Suits vs. Size',
-    tagline: 'Macro on SPY. Vibes on SOL. Same bell, different damage.',
-    entryFee: 5,
-    assets: ['SPY', 'META', 'BTC', 'ETH', 'SOL'],
-    badge: 'RIVAL PIT',
-  },
-  {
-    slug: 'meme-mayhem',
-    title: 'Frog & Dog Derby',
-    tagline: 'DOGE, PEPE, and chaos — sentiment is the only fundamental.',
-    entryFee: 5,
-    assets: ['DOGE', 'PEPE', 'BTC', 'SOL', 'ETH'],
-    badge: 'MEME TAPE',
-  },
-  {
-    slug: 'gold-rush',
-    title: 'Gold Rush Gauntlet',
-    tagline: 'GLD, SLV, and macro — when the world panics, metals pump.',
-    entryFee: 10,
-    assets: ['GLD', 'SLV', 'SPY', 'BTC', 'ETH'],
-    badge: 'METALS',
+    slug: DAILY_PIT_SLUG,
+    title: 'Daily Pit',
+    tagline: '$5 entry · top half cash · pool grows with the room.',
+    entryFee: DAILY_ENTRY_FEE,
+    assets: [...DAILY_ASSETS],
+    badge: 'DAILY',
   },
 ] as const;
 
-/** TradR Pit contest lineup — prize fields synced from pit-payouts structures. */
 export const PIT_CONTEST_CATALOG = CATALOG_SPECS.map((spec) => {
   const catalog = getCatalogPayoutFields(spec.slug);
   const atMin = { entryFee: spec.entryFee, participantCount: catalog.minEntries };
@@ -90,23 +43,18 @@ export const PIT_CONTEST_CATALOG = CATALOG_SPECS.map((spec) => {
     ...catalog,
     firstPrize: getLiveFirstPrize(spec.slug, atMin),
     totalPrizes: computeEffectivePool(spec.slug, atMin),
-    totalPrizesMax: catalog.totalPrizes,
+    totalPrizesMax: catalog.totalPrizesMax,
   };
 });
 
-/** Old DB / SwapRoyale-era titles → slug (keeps participations linked). */
 const LEGACY_TITLE_MAP: Record<string, string> = {
-  'Macro Royale': 'the-liquidation',
-  'Double Up': 'full-send',
-  'Wall Street vs Crypto': 'tradfi-vs-degen',
-  'Opening Bell Pit': OPENING_BELL_SLUG,
-  'First Candle Free-For-All': OPENING_BELL_SLUG,
-  'Opening Bell Bloodbath': OPENING_BELL_SLUG,
-  'The Liquidation': 'the-liquidation',
-  'Full Send Pit': 'full-send',
-  'Triple Stack Pit': 'triple-stack',
-  'Weekend Carnage': 'weekend-carnage',
-  'TradFi vs Degen Pit': 'tradfi-vs-degen',
+  'Daily Pit': DAILY_PIT_SLUG,
+  'Opening Bell Pit': DAILY_PIT_SLUG,
+  'Opening Bell Bloodbath': DAILY_PIT_SLUG,
+  'First Candle Free-For-All': DAILY_PIT_SLUG,
+  'Macro Royale': DAILY_PIT_SLUG,
+  'The Liquidation': DAILY_PIT_SLUG,
+  'Liquidation Lounge': DAILY_PIT_SLUG,
 };
 
 export type PitCatalogEntry = (typeof PIT_CONTEST_CATALOG)[number];
@@ -115,25 +63,29 @@ export function getCatalogBySlug(slug: string): PitCatalogEntry | undefined {
   return PIT_CONTEST_CATALOG.find((c) => c.slug === slug);
 }
 
-export function isOpeningBellContest(contest: { slug?: string; title?: string }): boolean {
+export function isDailyPitContest(contest: { slug?: string; title?: string }): boolean {
+  if (contest.slug === DAILY_PIT_SLUG) return true;
   return (
-    contest.slug === OPENING_BELL_SLUG ||
+    contest.title === 'Daily Pit' ||
     contest.title === 'Opening Bell Bloodbath' ||
-    contest.title === 'First Candle Free-For-All' ||
     contest.title === 'Opening Bell Pit'
   );
 }
 
-type OpeningBellLike = {
+/** @deprecated */
+export const isOpeningBellContest = isDailyPitContest;
+
+type DailyPitLike = {
   id?: number;
   slug?: string;
   title?: string;
   status?: string;
   startsAt?: string | null;
   endsAt?: string | null;
+  entryFee?: number;
 };
 
-function openingBellPickScore(contest: OpeningBellLike): number {
+function dailyPitPickScore(contest: DailyPitLike): number {
   const id = contest.id ?? 0;
   const clock = contest as Pick<Contest, 'status' | 'endsAt' | 'startsAt' | 'slug'>;
   if (isContestTradingOpen(clock)) return 2_000_000 + id;
@@ -145,46 +97,40 @@ function openingBellPickScore(contest: OpeningBellLike): number {
   return id;
 }
 
-/** Prefer today's trading bell — not the farthest-future week-slate duplicate. */
-export function findOpeningBellContest<T extends OpeningBellLike>(contests: T[]): T | undefined {
-  const open = contests.filter((c) => isOpeningBellContest(c) && c.status !== 'closed');
-  if (!open.length) return undefined;
-  const today = new Date().getDay();
-  const todayPits = open.filter((c) => {
-    if (!c.startsAt) return true;
-    return new Date(c.startsAt).getDay() === today;
-  });
-  const pool = todayPits.length ? todayPits : open;
-  return pool.reduce((best, c) => (openingBellPickScore(c) > openingBellPickScore(best) ? c : best));
+/** Canonical open daily pit — prefers trading > active > joinable. */
+export function findDailyPitContest<T extends DailyPitLike>(contests: T[]): T | undefined {
+  const open = contests.filter((c) => c.status !== 'closed' && Number(c.entryFee ?? 0) > 0);
+  if (!open.length) {
+    const legacy = contests.filter((c) => c.status !== 'closed');
+    if (!legacy.length) return undefined;
+    return legacy.reduce((best, c) => (dailyPitPickScore(c) > dailyPitPickScore(best) ? c : best));
+  }
+  return open.reduce((best, c) => (dailyPitPickScore(c) > dailyPitPickScore(best) ? c : best));
 }
 
-/** Short label for vault pit picker when titles duplicate (week slate). */
+/** @deprecated */
+export const findOpeningBellContest = findDailyPitContest;
+
 export function formatVaultPitPickerLabel(contest: Pick<Contest, 'title' | 'slug' | 'startsAt'>): string {
   const day = contest.startsAt
     ? new Date(contest.startsAt).toLocaleDateString('en-US', { weekday: 'short' })
     : '';
-  if (isOpeningBellContest(contest)) {
-    return day ? `Opening Bell · ${day}` : 'Opening Bell';
-  }
-  const short = contest.title.split(' ').slice(0, 2).join(' ');
-  return day ? `${short} · ${day}` : short;
+  return day ? `${contest.title} · ${day}` : contest.title;
 }
 
-/** Legacy duplicate pits from older schema rotations. */
 export function isStaleOpeningBellContest(
-  contest: OpeningBellLike,
-  canonical?: OpeningBellLike | null
+  contest: DailyPitLike,
+  canonical?: DailyPitLike | null
 ): boolean {
-  if (!isOpeningBellContest(contest) || contest.status === 'closed') return false;
+  if (contest.status === 'closed') return false;
   if (!canonical?.id || !contest.id) return false;
   return contest.id !== canonical.id;
 }
 
 export function resolveCatalogSlug(row: { slug?: string | null; title?: string }): string | undefined {
-  if (row.slug) return row.slug;
+  if (row.slug) return PIT_PAYOUT_BY_SLUG[row.slug] ? DAILY_PIT_SLUG : row.slug;
   if (row.title && LEGACY_TITLE_MAP[row.title]) return LEGACY_TITLE_MAP[row.title];
-  const byTitle = PIT_CONTEST_CATALOG.find((c) => c.title === row.title);
-  return byTitle?.slug;
+  return DAILY_PIT_SLUG;
 }
 
 export function enrichContest(contest: Contest, meta?: PitCatalogEntry | null): Contest {
@@ -193,20 +139,17 @@ export function enrichContest(contest: Contest, meta?: PitCatalogEntry | null): 
     meta ||
     (contest.slug ? getCatalogBySlug(contest.slug) : undefined) ||
     (legacySlug ? getCatalogBySlug(legacySlug) : undefined) ||
-    PIT_CONTEST_CATALOG.find((c) => c.title === contest.title);
-  if (!m) return contest;
-
-  const isLegacy = !!legacySlug;
-
-  const slug = contest.slug || m.slug;
+    PIT_CONTEST_CATALOG[0];
+  const slug = DAILY_PIT_SLUG;
   const scheduled = applyScheduleToContestAssets({ ...contest, slug });
+  const entryFee = Math.max(DAILY_ENTRY_FEE, Number(contest.entryFee ?? m.entryFee));
   return {
     ...scheduled,
     title: m.title,
     slug,
     tagline: m.tagline,
     badge: m.badge,
-    entryFee: isLegacy ? m.entryFee : contest.entryFee,
+    entryFee,
     firstPrize: m.firstPrize,
     totalPrizes: m.totalPrizes,
     maxEntries: m.maxEntries,
@@ -214,57 +157,44 @@ export function enrichContest(contest: Contest, meta?: PitCatalogEntry | null): 
   };
 }
 
-export function dbRowToPitContest(row: DbContest): Contest {
-  const slug = resolveCatalogSlug(row);
-  const meta = slug ? getCatalogBySlug(slug) : undefined;
+export function dbContestToEnrichedContest(row: DbContest): Contest {
   const base = dbContestToContest(row);
-  const enriched = enrichContest(
-    {
-      ...base,
-      slug: row.slug || slug || undefined,
-      tagline: row.tagline || undefined,
-      badge: row.badge || undefined,
-    },
-    meta
-  );
-  const scheduled = applyScheduleToContestAssets(enriched);
-  return {
-    ...scheduled,
-    assetTheme: describeContestTape(scheduled.slug, scheduled.assets, scheduled.startsAt),
-  };
+  const catalogSlug = resolveCatalogSlug(row);
+  const meta = catalogSlug ? getCatalogBySlug(catalogSlug) : PIT_CONTEST_CATALOG[0];
+  return enrichContest(base, meta);
 }
 
-/** Local/demo fallback when Supabase is offline — full week slate (2 pits × 7 days). */
-export function buildDemoContests(): Contest[] {
-  return buildWeekSlateDemoContests();
+export function dbRowToPitContest(row: DbContest): Contest {
+  return dbContestToEnrichedContest(row);
 }
 
-/** @deprecated Use buildWeekSlateDemoContests — legacy 8-pit demo */
-export function buildLegacyDemoContests(): Contest[] {
-  const now = Date.now();
-  const today = new Date();
-  return PIT_CONTEST_CATALOG.map((c, i) => {
-    const pitWindow = buildDemoPitWindow(c.slug, i, new Date(now));
-    const schedule = getContestAssetSchedule(c.slug, pitWindow.startsAt);
+export function buildDemoPitContests(): Contest[] {
+  return PIT_CONTEST_CATALOG.map((spec, catalogIndex) => {
+    const window = buildDemoPitWindow(spec.slug, catalogIndex);
+    const schedule = resolveContestAssets(spec.slug, window.startsAt, [...spec.assets]);
+    const assets = schedule?.assets ?? [...spec.assets];
+    const endsAt = window.endsAt.toISOString();
     return enrichContest({
-      id: i + 1,
-      title: c.title,
-      slug: c.slug,
-      tagline: c.tagline,
-      badge: c.badge,
-      date: pitWindow.startsAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      entryFee: c.entryFee,
-      firstPrize: c.firstPrize,
-      totalPrizes: c.totalPrizes,
-      entries: [47, 28, 5, 2, 1, 0, 0, 0][i] ?? 0,
-      maxEntries: c.maxEntries,
-      timeLeft: pitWindow.status === 'active' ? 'OPEN' : 'SCHEDULED',
-      assets: schedule.assets,
-      assetTheme: schedule.theme,
-      status: pitWindow.status,
-      startingPortfolioValue: 100000,
-      startsAt: pitWindow.startsAt.toISOString(),
-      endsAt: pitWindow.endsAt.toISOString(),
+      id: spec.slug === DAILY_PIT_SLUG ? 1 : 0,
+      title: spec.title,
+      slug: spec.slug,
+      tagline: spec.tagline,
+      badge: spec.badge,
+      entryFee: spec.entryFee,
+      firstPrize: spec.firstPrize,
+      totalPrizes: spec.totalPrizes,
+      maxEntries: spec.maxEntries,
+      entries: 0,
+      status: window.status,
+      startingPortfolioValue: 100_000,
+      assets,
+      date: formatContestDate(endsAt),
+      timeLeft: formatTimeLeft(endsAt, window.status),
+      endsAt,
+      startsAt: window.startsAt.toISOString(),
+      assetTheme: describeContestTape(spec.slug, assets, window.startsAt.toISOString()),
     });
   });
 }
+
+export const buildDemoContests = buildDemoPitContests;

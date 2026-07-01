@@ -22,14 +22,14 @@ type BattlesTabProps = {
   sortedCompletedBattles: Participation[];
   completedBattlesCount: number;
   contests: Contest[];
-  openingBellContest?: Contest;
+  dailyPitContest?: Contest;
   bellTick: number;
   prices: Record<string, number>;
   tradeLimitByContest: Record<number, TradeLimitInfo | null | undefined>;
   getPortfolioValue: (p: Participation) => number;
   rankInContest: (contestId: number) => number | null;
   getContestBoard: (contestId: number) => LeaderboardEntry[];
-  onJoinFree: () => void;
+  onJoinPit: () => void;
   onGoArena: () => void;
   onTrade: (contestId: number) => void;
   onLeaderboard: (contestId: number) => void;
@@ -48,14 +48,14 @@ export default function BattlesTab({
   sortedCompletedBattles,
   completedBattlesCount,
   contests,
-  openingBellContest,
+  dailyPitContest,
   bellTick,
   prices,
   tradeLimitByContest,
   getPortfolioValue,
   rankInContest,
   getContestBoard,
-  onJoinFree,
+  onJoinPit,
   onGoArena,
   onTrade,
   onLeaderboard,
@@ -109,8 +109,8 @@ export default function BattlesTab({
 
       {battlesSegment === 'active' && activeBattles.length === 0 && (
         <EmptyActiveBattles
-          freePit={openingBellContest}
-          onJoinFree={onJoinFree}
+          dailyPit={dailyPitContest}
+          onJoinPit={onJoinPit}
           onBrowseUpcoming={onGoArena}
         />
       )}

@@ -7,6 +7,8 @@ import {
   getPayoutStructure,
   payoutForContestRank,
 } from '../lib/pit-payouts';
+import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
+import { computeEffectivePool } from '../lib/pit-pool-math';
 import { PitPayoutChip } from './PitMoneyDisplay';
 
 export type SettleShareCardProps = {
@@ -34,6 +36,10 @@ export default function SettleShareCard({
   const pnlPct = startingValue > 0 ? (pnl / startingValue) * 100 : 0;
   const structure = getPayoutStructure(contestSlug);
   const paidRanks = countPaidRanks(structure);
+  const poolAtMin = computeEffectivePool(contestSlug, {
+    entryFee: DAILY_ENTRY_FEE,
+    participantCount: structure.minEntries,
+  });
   const tierPayout = rank > 0 ? payoutForContestRank(rank, contestSlug) : 0;
   const dateLabel = new Date().toLocaleDateString('en-US', {
     weekday: 'short',
@@ -53,7 +59,7 @@ export default function SettleShareCard({
             {contestTitle}
           </div>
           <div className="text-[10px] text-muted mt-1">
-            {dateLabel} · ${structure.totalPool.toLocaleString()} pool · top {paidRanks} paid
+            {dateLabel} · ${poolAtMin.toLocaleString()}+ pool · top {paidRanks} paid at min fill
           </div>
         </div>
 

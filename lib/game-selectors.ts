@@ -1,6 +1,6 @@
 import type { Contest, LeaderboardEntry, Participation, UserPerformanceStats } from './game-types';
 import { getPortfolioValue as calcPortfolioValue } from './portfolio';
-import { findOpeningBellContest, isStaleOpeningBellContest } from './pit-contests';
+import { findDailyPitContest, isStaleOpeningBellContest } from './pit-contests';
 import { featuredPitSortScore } from './tape-week';
 import {
   isContestStarted,
@@ -124,7 +124,7 @@ export function resolveVaultContestId(params: {
   featuredContest?: Contest;
 }): number | null {
   const { vaultContestId, joinedContests, contests, featuredContest } = params;
-  const canonicalOpeningBell = findOpeningBellContest(contests);
+  const canonicalOpeningBell = findDailyPitContest(contests);
 
   if (vaultContestId) {
     if (joinedContests.includes(vaultContestId)) {
@@ -155,7 +155,7 @@ export function buildArenaPitList(
   contests: Contest[],
   joinedContests: number[]
 ): ArenaPitListItem[] {
-  const canonicalOpeningBell = findOpeningBellContest(contests);
+  const canonicalOpeningBell = findDailyPitContest(contests);
   const todayDayIndex = new Date().getDay();
 
   const isJoinableContest = (c: Contest) =>

@@ -20,34 +20,24 @@ import VaultTab from '../components/VaultTab';
 import ProfileTab from '../components/ProfileTab';
 import TradeSheet from '../components/TradeSheet';
 
-import ActiveBattlesTour, { TourHelpButton as BattlesTourHelpButton } from '../components/ActiveBattlesTour';
-import ArenaTour from '../components/ArenaTour';
 import { REFERRAL_TIERS } from '../lib/referral-program';
 import { useHydrated } from '../lib/use-hydrated';
 import { supabase, isSupabaseConfigured, Profile } from '../lib/supabase';
 import {
   Contest,
-  GlobalLeaderboardEntry,
-  GlobalLeaderboardMetric,
-  GlobalLeaderboardPeriod,
   UserPerformanceStats,
   ActivityItem,
   ContestRecap,
   TradeLogEntry,
-  TapeLeaderboardEntry,
   ReferralStats,
 } from '../lib/game-types';
 import {
-  ensureWeekSlate,
-  fetchContests,
   fetchMyStats,
-  fetchGlobalLeaderboard,
   fetchActivity,
   fetchContestRecap,
   updateUsername,
   createDepositCheckout,
   fetchReferralStats,
-  fetchTapeLeaderboard,
 } from '../lib/game-api';
 import { useGameState, type SettlementResult, type TradeCompletePayload } from '../lib/use-game-state';
 import { initialContests } from '../lib/game-constants';
@@ -56,21 +46,16 @@ import JoinPitFlash from '../components/JoinPitFlash';
 import HowItWorksModal from '../components/HowItWorksModal';
 import PitMomentBanner from '../components/PitMomentBanner';
 import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
-import { payoutForContestRankLive } from '../lib/pit-pool-math';
+import { computeEffectivePool, payoutForContestRankLive } from '../lib/pit-pool-math';
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
-import {
-  findContestForWeekPit,
-  findJoinableContestForWeekDay,
-  hasJoinedWeekDayPit,
-} from '../lib/week-join';
-import { DAY_THEMES } from '../lib/tape-week';
+import { findDailyPitContest } from '../lib/pit-contests';
+import { DAILY_PIT_SLUG } from '../lib/daily-pit-config';
 import { markSettlementSeen } from '../lib/settlement-storage';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
 import {
   isContestBellOpen,
   isContestTradingOpen,
   isJoinAllowed,
-  isPriceStale,
 } from '../lib/contest-bell';
 export default function TradR() {
   const [activeTab, setActiveTab] = useState<'home' | 'entries' | 'leaderboard' | 'account'>('home');
@@ -95,20 +80,12 @@ export default function TradR() {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [battlesSegment, setBattlesSegment] = useState<'active' | 'upcoming' | 'completed'>('active');
   const [highlightDoneContestId, setHighlightDoneContestId] = useState<number | null>(null);
-  const [vaultMode, setVaultMode] = useState<'pit' | 'global' | 'tape'>('pit');
-  const [globalPeriod, setGlobalPeriod] = useState<GlobalLeaderboardPeriod>('all');
-  const [globalMetric, setGlobalMetric] = useState<GlobalLeaderboardMetric>('winnings');
-  const [globalLeaderboard, setGlobalLeaderboard] = useState<GlobalLeaderboardEntry[]>([]);
-  const [globalLoading, setGlobalLoading] = useState(false);
   const [userStats, setUserStats] = useState<UserPerformanceStats | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'invite' | 'activity'>('overview');
   const [recapData, setRecapData] = useState<ContestRecap | null>(null);
   const [referralCopied, setReferralCopied] = useState(false);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
-  const [tapeLeaderboard, setTapeLeaderboard] = useState<TapeLeaderboardEntry[]>([]);
-  const [tapeThemeLine, setTapeThemeLine] = useState('');
-  const [tapeLoading, setTapeLoading] = useState(false);
   const [profileExtrasLoading, setProfileExtrasLoading] = useState(false);
   const [lastTradeFlash, setLastTradeFlash] = useState<{
     rankBefore: number;
@@ -120,16 +97,10 @@ export default function TradR() {
   const [stripeEnabled, setStripeEnabled] = useState(false);
   const [depositLoading, setDepositLoading] = useState(false);
   const [infoContestId, setInfoContestId] = useState<number | null>(null);
-  const [showBattlesTour, setShowBattlesTour] = useState(false);
-  const [battlesTourStep, setBattlesTourStep] = useState(0);
-  const [showArenaTour, setShowArenaTour] = useState(false);
-  const [arenaTourStep, setArenaTourStep] = useState(0);
   const [joinFlashTitle, setJoinFlashTitle] = useState<string | null>(null);
   const [pitMoment, setPitMoment] = useState<PitMoment | null>(null);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [rankShake, setRankShake] = useState(false);
-  const [vaultRankAnim, setVaultRankAnim] = useState<'up' | 'down' | null>(null);
-
   const hydrated = useHydrated();
 
   const loadProfileExtras = async () => {
@@ -179,14 +150,6 @@ export default function TradR() {
       setRankShake(true);
       setTimeout(() => setRankShake(false), 400);
     }
-    if (result.rankDelta > 0) {
-      setVaultRankAnim('up');
-      setTimeout(() => setVaultRankAnim(null), 1200);
-    } else if (result.rankDelta < -2) {
-      setVaultRankAnim('down');
-      setTimeout(() => setVaultRankAnim(null), 1200);
-    }
-
     const rankText =
       result.rankDelta > 0
         ? `#${result.rankBefore} → #${result.rank} ▲${result.rankDelta}`
@@ -277,35 +240,6 @@ export default function TradR() {
 
   const infoContest = infoContestId != null ? contests.find((c) => c.id === infoContestId) : null;
 
-  const refreshGlobalLeaderboard = async (
-    period: GlobalLeaderboardPeriod = globalPeriod,
-    metric: GlobalLeaderboardMetric = globalMetric
-  ) => {
-    if (!isSupabaseConfigured) return;
-    setGlobalLoading(true);
-    try {
-      const entries = await fetchGlobalLeaderboard(period, metric);
-      setGlobalLeaderboard(entries);
-    } catch (e) {
-      console.warn('Global leaderboard failed', e);
-    } finally {
-      setGlobalLoading(false);
-    }
-  };
-
-  const refreshTapeLeaderboard = async () => {
-    setTapeLoading(true);
-    try {
-      const data = await fetchTapeLeaderboard();
-      setTapeLeaderboard(data.entries);
-      setTapeThemeLine(data.themeLine);
-    } catch (e) {
-      console.warn('Tape leaderboard load failed', e);
-    } finally {
-      setTapeLoading(false);
-    }
-  };
-
   const referralLink = () => {
     const code =
       referralStats?.referralCode ||
@@ -379,15 +313,6 @@ export default function TradR() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (vaultMode === 'global' && isSupabaseConfigured) {
-      refreshGlobalLeaderboard(globalPeriod, globalMetric);
-    }
-    if (vaultMode === 'tape' && isSupabaseConfigured) {
-      refreshTapeLeaderboard();
-    }
-  }, [vaultMode, globalPeriod, globalMetric, isSupabaseConfigured]);
-
-  useEffect(() => {
     if (!tradingContestId || !usingServerGame) return;
     void refreshLeaderboard(tradingContestId);
     const interval = setInterval(() => {
@@ -397,13 +322,13 @@ export default function TradR() {
   }, [tradingContestId, usingServerGame, refreshLeaderboard]);
 
   useEffect(() => {
-    if (!usingServerGame || activeTab !== 'leaderboard' || vaultMode !== 'pit' || !activeVaultContestId) return;
+    if (!usingServerGame || activeTab !== 'leaderboard' || !activeVaultContestId) return;
     void refreshLeaderboard(activeVaultContestId);
     const interval = setInterval(() => {
       void refreshLeaderboard(activeVaultContestId);
     }, 30000);
     return () => clearInterval(interval);
-  }, [activeTab, vaultMode, activeVaultContestId, usingServerGame, refreshLeaderboard]);
+  }, [activeTab, activeVaultContestId, usingServerGame, refreshLeaderboard]);
 
   const yourRank = dynamicVault.find((e) => e.isYou)?.rank || (dynamicVault.length ? dynamicVault.length + 1 : 1);
   const vaultPlayerCount = dynamicVault.length;
@@ -514,10 +439,14 @@ export default function TradR() {
   const isJoinableContest = (c: Contest) =>
     (c.status === 'open' || c.status === 'active') && isJoinAllowed(c);
 
+  const dailyPitContest = findDailyPitContest(contests) ?? canonicalOpeningBell;
   const floorLivePitCount = arenaPitList.filter((p) => !p.scheduled).length;
-  const floorPrizePool = arenaPitList
-    .filter((p) => !p.scheduled)
-    .reduce((sum, p) => sum + p.contest.totalPrizes, 0);
+  const floorPrizePool = dailyPitContest
+    ? computeEffectivePool(DAILY_PIT_SLUG, {
+        entryFee: dailyPitContest.entryFee,
+        participantCount: getLiveParticipantCount(dailyPitContest.id),
+      })
+    : 0;
 
   const primaryActiveBattle = activeBattles.length
     ? [...activeBattles].sort((a, b) => getPortfolioValue(b) - getPortfolioValue(a))[0]
@@ -547,17 +476,6 @@ export default function TradR() {
 
   const effectiveStats =
     userStats || (completedBattles.length || activeBattles.length ? computeDemoStats(participations) : null);
-
-  const vaultActiveJoinedCount = joinedContests.filter((id) => {
-    const c = contests.find((x) => x.id === id);
-    return c && c.status !== 'closed';
-  }).length;
-
-  useEffect(() => {
-    if (activeTab === 'leaderboard' && vaultActiveJoinedCount === 0 && vaultMode === 'pit') {
-      setVaultMode('tape');
-    }
-  }, [activeTab, vaultActiveJoinedCount]);
 
   const openTradeModal = (contestId: number) => {
     const contest = contests.find((c) => c.id === contestId);
@@ -591,7 +509,6 @@ export default function TradR() {
   const openLeaderboard = async (contestId: number) => {
     setTradingContestId(null);
     setVaultContestId(contestId);
-    setVaultMode('pit');
     setActiveTab('leaderboard');
     try {
       const contest = contests.find((c) => c.id === contestId);
@@ -704,11 +621,10 @@ export default function TradR() {
     if (opts?.skipped) setActiveTab('home');
   };
 
-  const openingBellContest = canonicalOpeningBell;
   const showArenaNavDot =
-    !!openingBellContest &&
-    !joinedContests.includes(openingBellContest.id) &&
-    isJoinableContest(openingBellContest);
+    !!dailyPitContest &&
+    !joinedContests.includes(dailyPitContest.id) &&
+    isJoinableContest(dailyPitContest);
   const showProfileNavDot = !!(spotlightFill && !spotlightFill.isConfirmed);
   const battlesChromeStatus =
     battlesSegment === 'active' && activeBattles.length > 0
@@ -783,12 +699,14 @@ export default function TradR() {
             </div>
             <div className="pit-chrome-status">
               {floorLivePitCount > 0 && <span className="pit-chrome-orb" aria-hidden />}
-              <span>{DAY_THEMES[new Date().getDay()].word} day</span>
-              {floorLivePitCount > 0 && (
+              <span>Daily Pit</span>
+              {dailyPitContest && (
                 <>
                   <span className="pit-chrome-status-sep">·</span>
                   <span>
-                    {floorLivePitCount} live · ${floorPrizePool.toLocaleString()} in prizes
+                    {floorPrizePool > 0
+                      ? `$${floorPrizePool.toLocaleString()} pool`
+                      : 'Ring in to grow the pool'}
                   </span>
                 </>
               )}
@@ -841,15 +759,6 @@ export default function TradR() {
           stripeEnabled={stripeEnabled}
           onDeposit={deposit}
           onProfile={() => setActiveTab('account')}
-          trailing={
-            <BattlesTourHelpButton
-              onClick={() => {
-                setBattlesSegment('active');
-                setBattlesTourStep(0);
-                setShowBattlesTour(true);
-              }}
-            />
-          }
         />
       )}
 
@@ -857,7 +766,7 @@ export default function TradR() {
         <PitTabChrome
           kicker="Spectator deck"
           title="Vault"
-          statusLine="Live pit · tape week · global hall"
+          statusLine="Live pit leaderboard"
           balance={effectiveBalance}
           user={user}
           stripeEnabled={stripeEnabled}
@@ -901,46 +810,6 @@ export default function TradR() {
                 setBattlesSegment('upcoming');
               }
             }}
-            contests={contests}
-            onJoinWeekPit={async (slug, dayIndex) => {
-              if (hasJoinedWeekDayPit(contests, joinedContests, slug, dayIndex)) {
-                const live =
-                  findJoinableContestForWeekDay(contests, slug, dayIndex, []) ??
-                  findContestForWeekPit(contests, slug, dayIndex);
-                if (live && joinedContests.includes(live.id) && isContestTradingOpen(live)) {
-                  openTradeModal(live.id);
-                  return;
-                }
-                setActiveTab('entries');
-                setBattlesSegment('upcoming');
-                return;
-              }
-              if (usingServerGame) {
-                await ensureWeekSlate();
-                const fresh = await fetchContests();
-                setContests(fresh);
-                const match = findJoinableContestForWeekDay(fresh, slug, dayIndex, joinedContests);
-                if (match) {
-                  joinArena(match.id);
-                  return;
-                }
-              } else {
-                const match = findJoinableContestForWeekDay(contests, slug, dayIndex, joinedContests);
-                if (match) {
-                  joinArena(match.id);
-                  return;
-                }
-              }
-              showToast('Pit is full or entries closed — check back when the tape drops', 'error');
-            }}
-            onInfoWeekPit={(slug, dayIndex) => {
-              const match =
-                findContestForWeekPit(contests, slug, dayIndex) ??
-                findJoinableContestForWeekDay(contests, slug, dayIndex, joinedContests);
-              if (match) setInfoContestId(match.id);
-              else showToast('Contest details unlock when this pit opens', 'error');
-            }}
-            useServerStreak={usingServerGame}
             getPitLiveStats={(contestId) => {
               const p = participations[contestId];
               if (!p) return null;
@@ -969,15 +838,15 @@ export default function TradR() {
             sortedCompletedBattles={sortedCompletedBattles}
             completedBattlesCount={completedBattles.length}
             contests={contests}
-            openingBellContest={openingBellContest}
+            dailyPitContest={dailyPitContest}
             bellTick={bellTick}
             prices={prices}
             tradeLimitByContest={tradeLimitByContest}
             getPortfolioValue={getPortfolioValue}
             rankInContest={rankInContest}
             getContestBoard={getContestBoard}
-            onJoinFree={() => {
-              if (openingBellContest) joinArena(openingBellContest.id);
+            onJoinPit={() => {
+              if (dailyPitContest) joinArena(dailyPitContest.id);
             }}
             onGoArena={() => setActiveTab('home')}
             onTrade={openTradeModal}
@@ -989,8 +858,6 @@ export default function TradR() {
 
         {activeTab === 'leaderboard' && (
           <VaultTab
-            vaultMode={vaultMode}
-            onVaultModeChange={setVaultMode}
             vaultContest={vaultContest}
             activeVaultContestId={activeVaultContestId}
             joinedContests={joinedContests}
@@ -1010,22 +877,6 @@ export default function TradR() {
               isYou: f.isYou,
             }))}
             pitFeedLoading={pitFeedLoading}
-            tapeLeaderboard={tapeLeaderboard}
-            tapeThemeLine={tapeThemeLine}
-            tapeLoading={tapeLoading}
-            onRefreshTape={() => refreshTapeLeaderboard()}
-            globalPeriod={globalPeriod}
-            globalMetric={globalMetric}
-            globalLeaderboard={globalLeaderboard}
-            globalLoading={globalLoading}
-            onGlobalPeriodChange={(v) => {
-              setGlobalPeriod(v);
-              refreshGlobalLeaderboard(v, globalMetric);
-            }}
-            onGlobalMetricChange={(m) => {
-              setGlobalMetric(m);
-              refreshGlobalLeaderboard(globalPeriod, m);
-            }}
             onSelectVaultContest={async (id) => {
               setVaultContestId(id);
               try {
@@ -1168,17 +1019,19 @@ export default function TradR() {
       {showOnboarding && user && (
         <OnboardingPit
           defaultUsername={profile?.username || user.email?.split('@')[0] || ''}
-          freePitName={openingBellContest?.title || 'Opening Bell'}
+          balance={effectiveBalance}
+          stripeEnabled={stripeEnabled}
           onComplete={completeOnboarding}
           onSetUsername={async (name) => {
             await updateUsername(name);
             setProfile((prev) => (prev ? { ...prev, username: name } : prev));
           }}
-          onJoinFreePit={async () => {
-            if (openingBellContest && !joinedContests.includes(openingBellContest.id)) {
-              await joinArena(openingBellContest.id);
+          onJoinPit={async () => {
+            if (dailyPitContest && !joinedContests.includes(dailyPitContest.id)) {
+              await joinArena(dailyPitContest.id);
             }
           }}
+          onDeposit={() => deposit(10)}
         />
       )}
 
@@ -1245,22 +1098,6 @@ export default function TradR() {
           contest={infoContest}
           bellTick={bellTick}
           onClose={() => setInfoContestId(null)}
-        />
-      )}
-
-      {showBattlesTour && activeTab === 'entries' && (
-        <ActiveBattlesTour
-          stepIndex={battlesTourStep}
-          onStepChange={setBattlesTourStep}
-          onClose={() => setShowBattlesTour(false)}
-        />
-      )}
-
-      {showArenaTour && activeTab === 'home' && (
-        <ArenaTour
-          stepIndex={arenaTourStep}
-          onStepChange={setArenaTourStep}
-          onClose={() => setShowArenaTour(false)}
         />
       )}
 

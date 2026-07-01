@@ -95,8 +95,7 @@ async function fetchWithTimeout(path: string, init: RequestInit = {}, ms = 20000
 }
 
 export async function fetchContests(): Promise<Contest[]> {
-  // Fire-and-forget — server also runs cycle; must not block arena paint.
-  void ensureWeekSlate();
+  // MVP: no auto week-slate spawn — one daily pit managed by cron/manual.
 
   let res: Response | null = null;
   let lastErr: unknown;

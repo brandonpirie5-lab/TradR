@@ -1,7 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getContestRules } from './contest-rules';
 import { fetchMarketPrices } from './market-prices';
-import { buildScaledPayouts } from './pit-pool-math';
+import { buildScaledPayouts, computeEffectivePool } from './pit-pool-math';
+import { buildPlatformRakeRecord } from './platform-rake';
 import { getPortfolioValue, normalizePositions } from './portfolio';
 
 export type SettleResult = {
@@ -223,9 +224,22 @@ export async function settleContestById(
     }
   }
 
+  const poolPaid = computeEffectivePool(contest.slug ?? undefined, {
+    entryFee,
+    participantCount: parts.length,
+  });
+  const rakeRecord = buildPlatformRakeRecord(
+    contestId,
+    contest.title,
+    entryFee,
+    parts.length,
+    poolPaid
+  );
+
   const closePayload: Record<string, unknown> = { status: 'closed' };
   closePayload.settlement_prices = prices;
   closePayload.settled_at = new Date().toISOString();
+  closePayload.platform_rake = rakeRecord;
 
   try {
     await admin.from('contests').update(closePayload).eq('id', contestId);

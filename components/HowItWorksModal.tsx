@@ -2,19 +2,21 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES } from '../lib/daily-pit-config';
+import { PLATFORM_RAKE_PCT } from '../lib/pit-pool-math';
 
 const SECTIONS = [
   {
     title: 'What is TradR Pit?',
-    body: 'Fantasy trading contests. Pay a fixed entry (or join free pits), trade a virtual $100,000 portfolio at live market prices, and climb the leaderboard. Top finishers win real cash prizes.',
+    body: `Fantasy trading contests. Pay $${DAILY_ENTRY_FEE} to enter today's pit, trade a virtual $100,000 portfolio at live market prices, and climb the leaderboard. Top half of the field split the prize pool.`,
+  },
+  {
+    title: 'How do prizes work?',
+    body: `Prize pool = entry fees collected minus ${PLATFORM_RAKE_PCT}% platform fee. The top 50% of traders split the pool equally. Pool size grows with every trader who rings in. Need at least ${DAILY_MIN_ENTRIES} traders or the pit voids and entry fees refund.`,
   },
   {
     title: 'Is this gambling?',
     body: 'TradR Pit is designed as a skill-based fantasy contest. You compete with virtual portfolios — no real money is invested in the market. Outcomes depend on trading decisions during the contest window, not chance.',
-  },
-  {
-    title: 'How do prizes work?',
-    body: 'Prize pools and payout tiers are shown before you enter each pit. Rank is based on your final virtual portfolio value when the bell rings. Payouts vary by contest size and entry fee.',
   },
   {
     title: 'Who can play?',

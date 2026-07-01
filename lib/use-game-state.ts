@@ -11,7 +11,6 @@ import {
 import { getPortfolioValue as calcPortfolioValue } from './portfolio';
 import {
   fetchContests,
-  ensureWeekSlateOnce,
   refreshGameState,
   joinContestApi,
   executeTradeApi,
@@ -20,16 +19,13 @@ import {
   triggerAutoSettle,
   fetchPitFeed,
   fetchTradeLimit,
-  syncOpeningBellStreak,
   type PitFeedItem,
 } from './game-api';
 import { buildTradeLimitInfo, canPlaceTrade, type TradeLimitInfo } from './trade-limits';
 import {
-  findOpeningBellContest,
+  findDailyPitContest,
   isStaleOpeningBellContest,
-  OPENING_BELL_SLUG,
 } from './pit-contests';
-import { getOpeningBellStreak, recordOpeningBellDay, applyServerStreakSnapshot } from './opening-bell-streak';
 import { getContestRules } from './contest-rules';
 import { payoutForContestRankLive } from './pit-pool-math';
 import { loadSeenSettlementIds, markSettlementSeen } from './settlement-storage';
@@ -146,7 +142,7 @@ export function useGameState({
   const syncGameRef = useRef<() => Promise<void>>(async () => {});
   const loadProfileExtrasRef = useRef(loadProfileExtras);
   const onSettlementRef = useRef(onSettlement);
-  const celebrateStreakRef = useRef<(c: Contest) => void>(() => {});
+
   const showToastRef = useRef(showToast);
   const contestsRef = useRef(contests);
   const participationsRef = useRef(participations);
@@ -257,8 +253,8 @@ export function useGameState({
         }
         const joinedIds = Object.keys(state.participations).map(Number);
         joinedIds.forEach((id) => refreshLeaderboard(id));
-        const freePitId = findOpeningBellContest(state.contests)?.id;
-        if (freePitId) refreshLeaderboard(freePitId);
+        const dailyPitId = findDailyPitContest(state.contests)?.id;
+        if (dailyPitId) refreshLeaderboard(dailyPitId);
       } catch {
         console.log('Supabase load skipped (demo mode or tables not ready)');
       }
@@ -337,54 +333,9 @@ export function useGameState({
     [contests, prices]
   );
 
-  const celebrateOpeningBellStreak = useCallback(
-    async (contest?: Contest) => {
-      if (contest?.slug !== OPENING_BELL_SLUG) return;
-
-      if (usingServerGame) {
-        try {
-          const before = getOpeningBellStreak();
-          const result = await syncOpeningBellStreak();
-          const after = applyServerStreakSnapshot(result.streak, result.lastDayEt);
-
-          if (result.creditsAwarded.length > 0) {
-            for (const credit of result.creditsAwarded) {
-              showToast(`${credit.label} — +$${credit.amount} pit credit`);
-            }
-            await syncGameFromServer();
-            loadProfileExtras?.();
-          } else if (after.streak >= 3 && before.streak < 3) {
-            showToast('3-day tape streak — $2 pit credit unlocks at settlement');
-          } else if (after.streak >= 7 && before.streak < 7) {
-            showToast('Week on the tape — $5 pit credit unlocks at settlement');
-          }
-        } catch {
-          const before = getOpeningBellStreak();
-          const after = recordOpeningBellDay();
-          if (after.streak >= 3 && before.streak < 3) {
-            showToast('3-day tape streak — $2 pit credit unlocks at settlement');
-          } else if (after.streak >= 7 && before.streak < 7) {
-            showToast('Week on the tape — $5 pit credit unlocks at settlement');
-          }
-        }
-        return;
-      }
-
-      const before = getOpeningBellStreak();
-      const after = recordOpeningBellDay();
-      if (after.streak >= 3 && before.streak < 3) {
-        showToast('3-day tape streak — $2 pit credit unlocks at settlement');
-      } else if (after.streak >= 7 && before.streak < 7) {
-        showToast('Week on the tape — $5 pit credit unlocks at settlement');
-      }
-    },
-    [usingServerGame, showToast, syncGameFromServer, loadProfileExtras]
-  );
-
   syncGameRef.current = syncGameFromServer;
   loadProfileExtrasRef.current = loadProfileExtras;
   onSettlementRef.current = onSettlement;
-  celebrateStreakRef.current = celebrateOpeningBellStreak;
   showToastRef.current = showToast;
   contestsRef.current = contests;
   participationsRef.current = participations;
@@ -416,7 +367,9 @@ export function useGameState({
     [usingServerGame, leaderboardByContest, contests, participations]
   );
 
-  const canonicalOpeningBell = useMemo(() => findOpeningBellContest(contests), [contests]);
+  const canonicalDailyPit = useMemo(() => findDailyPitContest(contests), [contests]);
+  /** @deprecated Use canonicalDailyPit */
+  const canonicalOpeningBell = canonicalDailyPit;
 
   const featuredContest = useMemo(
     () =>
@@ -601,7 +554,6 @@ export function useGameState({
           ].slice(0, 12));
           markSettlementSeen(contestId);
           serverSettledShownRef.current.add(contestId);
-          if (c.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(c);
           onSettlement({
             contestId,
             contestSlug: c.slug,
@@ -685,7 +637,6 @@ export function useGameState({
 
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setHistory((h) => [{ time: now, action: `Settled ${c.title} (#${rank})`, amount: payout }, ...h].slice(0, 12));
-      if (c.slug === OPENING_BELL_SLUG) celebrateOpeningBellStreak(c);
       onSettlement({
         contestId,
         contestSlug: c.slug,
@@ -712,7 +663,6 @@ export function useGameState({
       getLiveParticipantCount,
       userBalance,
       getContestBoard,
-      celebrateOpeningBellStreak,
       prices,
     ]
   );
@@ -822,7 +772,6 @@ export function useGameState({
             board: boardAfter,
           });
           await loadPitFeed(tradingContestId);
-          celebrateOpeningBellStreak(contestForLimit);
           onCloseTrade();
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : 'Trade failed';
@@ -913,7 +862,6 @@ export function useGameState({
         tradeLimit: demoLimit,
         board: updatedBoard,
       });
-      celebrateOpeningBellStreak(contestForLimit);
       onCloseTrade();
     },
     [
@@ -928,7 +876,6 @@ export function useGameState({
       getContestBoard,
       onTradeComplete,
       loadPitFeed,
-      celebrateOpeningBellStreak,
       rankInContest,
       getPortfolioValue,
       user,
@@ -1033,12 +980,11 @@ export function useGameState({
     const boot = async () => {
       if (isSupabaseConfigured) {
         try {
-          void ensureWeekSlateOnce();
           const serverContests = await fetchContests();
           if (serverContests.length) {
             setContests(serverContests);
-            const freePitId = findOpeningBellContest(serverContests)?.id;
-            if (freePitId) refreshLeaderboard(freePitId);
+            const dailyPitId = findDailyPitContest(serverContests)?.id;
+            if (dailyPitId) refreshLeaderboard(dailyPitId);
           }
         } catch (e) {
           console.warn('Using local contest fallback', e);
@@ -1102,8 +1048,8 @@ export function useGameState({
     if (!isSupabaseConfigured) return;
     const contestIds = [...new Set(Object.keys(participations).map(Number))];
     if (vaultContestId && !contestIds.includes(vaultContestId)) contestIds.push(vaultContestId);
-    const freePitId = findOpeningBellContest(contests)?.id;
-    if (freePitId && !contestIds.includes(freePitId)) contestIds.push(freePitId);
+    const dailyPitId = findDailyPitContest(contests)?.id;
+    if (dailyPitId && !contestIds.includes(dailyPitId)) contestIds.push(dailyPitId);
     if (!contestIds.length) return;
 
     contestIds.forEach((id) => refreshLeaderboard(id));
@@ -1114,7 +1060,7 @@ export function useGameState({
   useEffect(() => {
     const joined = Object.keys(participations).map(Number);
     if (!joined.length) return;
-    const canonical = findOpeningBellContest(contests);
+    const canonical = findDailyPitContest(contests);
     const preferred =
       (canonical?.id && joined.includes(canonical.id) ? canonical.id : undefined) ??
       joined.find((id) => {
@@ -1260,9 +1206,6 @@ export function useGameState({
               serverSettledShownRef.current.add(yours.id);
               markSettlementSeen(yours.id);
               const settledContest = contestsRef.current.find((x) => x.id === yours.id);
-              if (settledContest?.slug === OPENING_BELL_SLUG) {
-                void celebrateStreakRef.current(settledContest);
-              }
               onSettlementRef.current({
                 contestId: yours.id,
                 contestSlug: settledContest?.slug,

@@ -4,13 +4,11 @@ import React from 'react';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
 import ArenaTodayBoard from './ArenaTodayBoard';
 
-
 export type ArenaPitItem = { contest: Contest; scheduled: boolean };
 
 type ArenaHomeProps = {
   pits: ArenaPitItem[];
   joinedContestIds: number[];
-  contests: Contest[];
   getParticipantCount: (contestId: number) => number;
   getRank: (contestId: number) => number | null | undefined;
   bellTick: number;
@@ -18,9 +16,6 @@ type ArenaHomeProps = {
   isTradingOpen: (contest: Contest) => boolean;
   onInfo: (contestId: number) => void;
   onEnter: (contest: Contest) => void;
-  onJoinWeekPit: (slug: string, dayIndex: number) => void;
-  onInfoWeekPit: (slug: string, dayIndex: number) => void;
-  useServerStreak?: boolean;
   getPitLiveStats?: (contestId: number) => { liveValue: number; pnlPct: number; rank: number | null } | null;
   getContestBoard?: (contestId: number) => LeaderboardEntry[];
   onViewLeaderboard?: (contestId: number) => void;
@@ -30,7 +25,6 @@ type ArenaHomeProps = {
 export default function ArenaHome({
   pits,
   joinedContestIds,
-  contests,
   getParticipantCount,
   getRank,
   bellTick,
@@ -38,31 +32,16 @@ export default function ArenaHome({
   isTradingOpen,
   onInfo,
   onEnter,
-  onJoinWeekPit,
-  onInfoWeekPit,
-  useServerStreak = false,
   getPitLiveStats,
   getContestBoard,
   onViewLeaderboard,
   onShowHowItWorks,
 }: ArenaHomeProps) {
-  if (!pits.length) {
-    return (
-      <div className="af-landing">
-        <div className="af-empty">
-          <p className="af-empty-title">No contests right now</p>
-          <p className="af-empty-sub">Check back when the floor opens.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="af-landing af-landing-v3">
       <ArenaTodayBoard
         pits={pits}
         joinedContestIds={joinedContestIds}
-        contests={contests}
         getParticipantCount={getParticipantCount}
         getRank={getRank}
         bellTick={bellTick}
@@ -70,9 +49,6 @@ export default function ArenaHome({
         isTradingOpen={isTradingOpen}
         onInfo={onInfo}
         onEnter={onEnter}
-        onJoinWeekPit={onJoinWeekPit}
-        onInfoWeekPit={onInfoWeekPit}
-        useServerStreak={useServerStreak}
         getPitLiveStats={getPitLiveStats}
         getContestBoard={getContestBoard}
         onViewLeaderboard={onViewLeaderboard}

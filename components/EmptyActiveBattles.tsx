@@ -3,14 +3,15 @@
 import React from 'react';
 import { Zap, Trophy } from 'lucide-react';
 import { Contest } from '../lib/game-types';
+import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
 
 export default function EmptyActiveBattles({
-  freePit,
-  onJoinFree,
+  dailyPit,
+  onJoinPit,
   onBrowseUpcoming,
 }: {
-  freePit?: Contest;
-  onJoinFree: () => void;
+  dailyPit?: Contest;
+  onJoinPit: () => void;
   onBrowseUpcoming: () => void;
 }) {
   return (
@@ -20,20 +21,20 @@ export default function EmptyActiveBattles({
       </div>
       <p className="bt-upcoming-empty-title">No active battles</p>
       <p className="bt-upcoming-empty-copy">
-        The tape is empty until you send a ticket. Jump in free or scout pits in Arena.
+        Ring in on Arena to join today&apos;s ${DAILY_ENTRY_FEE} pit — your ticket shows here when the bell opens.
       </p>
-      {freePit && (
+      {dailyPit && (
         <button
-          onClick={onJoinFree}
+          onClick={onJoinPit}
           className="btn btn-primary w-full py-3.5 text-sm mt-5 mb-2 flex items-center justify-center gap-2"
         >
           <Zap size={16} />
-          RING IN — {freePit.title}
+          RING IN — ${DAILY_ENTRY_FEE} · {dailyPit.title}
         </button>
       )}
       <button
         onClick={onBrowseUpcoming}
-        className={`bt-arena-link ${freePit ? '' : 'bt-arena-link-spaced'}`}
+        className={`bt-arena-link ${dailyPit ? '' : 'bt-arena-link-spaced'}`}
       >
         <span>Browse pits in Arena</span>
         <span className="bt-arena-link-arrow" aria-hidden>→</span>

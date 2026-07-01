@@ -2,10 +2,12 @@
 
 import React from 'react';
 import {
-  countPaidRanks,
-  getPayoutStructure,
-  payoutForContestRank,
-} from '../lib/pit-payouts';
+  computeEffectivePool,
+  computeMaxPaidRank,
+  payoutForContestRankLive,
+  PLATFORM_RAKE_PCT,
+} from '../lib/pit-pool-math';
+import { getPayoutStructure } from '../lib/pit-payouts';
 
 export function PitPayoutChip({
   slug,
@@ -18,37 +20,44 @@ export function PitPayoutChip({
   return <span className={`at-money-payout-label ${className}`.trim()}>{label}</span>;
 }
 
-export function PitPoolSummary({ slug }: { slug?: string | null }) {
-  const s = getPayoutStructure(slug);
-  const paid = countPaidRanks(s);
-  return (
-    <span className="pit-pool-summary text-[10px] text-muted font-mono">
-      Top {paid} paid · min {s.minEntries} to run · cap {s.maxEntries}
-    </span>
-  );
-}
-
 export function PitProjectedPayout({
   slug,
   rank,
+  entryFee = 5,
+  participantCount,
   className = '',
 }: {
   slug?: string | null;
   rank: number;
+  entryFee?: number;
+  participantCount?: number;
   className?: string;
 }) {
-  const amount = payoutForContestRank(rank, slug);
+  const s = getPayoutStructure(slug);
+  const count = Math.max(participantCount ?? s.minEntries, s.minEntries);
+  const amount = payoutForContestRankLive(rank, slug, { entryFee, participantCount: count });
   if (amount <= 0) {
-    const paid = countPaidRanks(getPayoutStructure(slug));
-    return (
-      <span className={`pit-projected-out text-[10px] text-muted font-mono ${className}`.trim()}>
-        Outside top {paid}
-      </span>
-    );
+    return <span className={className}>Outside the money</span>;
   }
+  return <span className={className}>~${amount.toLocaleString()} at this fill</span>;
+}
+
+export function PitPoolSummary({
+  slug,
+  entryFee = 5,
+  participantCount,
+}: {
+  slug?: string | null;
+  entryFee?: number;
+  participantCount?: number;
+}) {
+  const s = getPayoutStructure(slug);
+  const count = Math.max(participantCount ?? 0, s.minEntries);
+  const pool = computeEffectivePool(slug, { entryFee, participantCount: count });
+  const paid = computeMaxPaidRank(slug, count);
   return (
-    <span className={`pit-projected-in text-[10px] text-accent font-mono font-bold ${className}`.trim()}>
-      +${amount} projected
+    <span className="pit-pool-summary text-[10px] text-muted font-mono">
+      ${pool.toLocaleString()} pool · top {paid} paid · min {s.minEntries} to run
     </span>
   );
 }
@@ -58,6 +67,7 @@ type PitMoneyDisplayProps = {
   totalPrizes: number;
   firstPrize?: number;
   entryFee: number;
+  participantCount?: number;
   variant?: 'inline' | 'compact' | 'stacked' | 'hero';
   showChip?: boolean;
   showHook?: boolean;
@@ -66,15 +76,21 @@ type PitMoneyDisplayProps = {
 
 export default function PitMoneyDisplay({
   slug,
-  totalPrizes,
-  firstPrize,
   entryFee,
+  participantCount = 0,
   variant = 'inline',
   showChip = true,
   showHook = false,
   showSuffix = true,
 }: PitMoneyDisplayProps) {
   const structure = getPayoutStructure(slug);
+  const count = Math.max(participantCount, structure.minEntries);
+  const livePool = computeEffectivePool(slug, { entryFee, participantCount: count });
+  const paid = computeMaxPaidRank(slug, count);
+  const eachPayout =
+    paid > 0 ? Math.floor((livePool / paid) * 100) / 100 : 0;
+  const displayCount = participantCount > 0 ? participantCount : structure.minEntries;
+
   const rootClass = [
     'at-pit-money',
     variant === 'compact' ? 'at-pit-money-compact' : '',
@@ -84,21 +100,16 @@ export default function PitMoneyDisplay({
     .filter(Boolean)
     .join(' ');
 
-  const entry =
-    entryFee === 0 ? (
-      <span className="at-money-free">Free</span>
-    ) : (
-      <span className="at-money-entry">${entryFee}</span>
-    );
+  const entry = <span className="at-money-entry">${entryFee}</span>;
 
   if (variant === 'stacked') {
     return (
       <div className={rootClass}>
         {showChip && <PitPayoutChip slug={slug} className="mb-1" />}
         <div className="at-pit-money-stacked-pool font-mono text-accent font-bold tabular-nums">
-          ${totalPrizes.toLocaleString()}
+          ${livePool.toLocaleString()}
         </div>
-        <div className="text-[10px] text-muted tracking-wide uppercase">Prize pool</div>
+        <div className="text-[10px] text-muted tracking-wide uppercase">Live prize pool</div>
         <div className="at-pit-money-stacked-entry mt-1">
           {entry}
           {showSuffix && <span className="at-money-lbl"> entry</span>}
@@ -109,21 +120,20 @@ export default function PitMoneyDisplay({
   }
 
   if (variant === 'hero') {
-    const top = firstPrize ?? totalPrizes;
-    const paid = countPaidRanks(structure);
     return (
       <div className={rootClass}>
-        <div className="at-pit-money-hero-amount">${top.toLocaleString()}</div>
+        <div className="at-pit-money-hero-amount">${livePool.toLocaleString()}</div>
         <div className="at-pit-money-hero-sublabel">
-          1st place
-          {firstPrize != null && firstPrize !== totalPrizes && (
-            <>
-              <span className="at-pit-money-hero-sep">·</span>
-              ${totalPrizes.toLocaleString()} pool
-            </>
-          )}
+          live pool
           <span className="at-pit-money-hero-sep">·</span>
-          top {paid} paid
+          {displayCount} traders
+          <span className="at-pit-money-hero-sep">·</span>
+          top {paid} get ${eachPayout.toLocaleString()} each
+          <span className="at-pit-money-hero-sep">·</span>
+          ${entryFee} entry
+        </div>
+        <div className="text-[10px] text-muted mt-1">
+          {PLATFORM_RAKE_PCT}% platform fee · pool grows with entries
         </div>
       </div>
     );
@@ -132,7 +142,7 @@ export default function PitMoneyDisplay({
   return (
     <span className={rootClass}>
       {showChip && <PitPayoutChip slug={slug} />}
-      <span className="at-money-prize">${totalPrizes.toLocaleString()}</span>
+      <span className="at-money-prize">${livePool.toLocaleString()}</span>
       <span className="at-money-lbl">pool</span>
       <span className="at-money-sep">·</span>
       {entry}
