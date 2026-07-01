@@ -286,6 +286,17 @@ export default function TradR() {
   }, [tradingContestId, usingServerGame, refreshLeaderboard]);
 
   useEffect(() => {
+    if (!tradingContestId) return;
+    const contest = contests.find((c) => c.id === tradingContestId);
+    if (!contest?.assets?.length) return;
+    void fetchLivePrices(contest.assets);
+    const interval = setInterval(() => {
+      void fetchLivePrices(contest.assets);
+    }, 20_000);
+    return () => clearInterval(interval);
+  }, [tradingContestId, contests, fetchLivePrices]);
+
+  useEffect(() => {
     if (!usingServerGame || activeTab !== 'leaderboard' || !activeVaultContestId) return;
     void refreshLeaderboard(activeVaultContestId);
     const interval = setInterval(() => {
@@ -462,7 +473,7 @@ export default function TradR() {
   const effectiveStats =
     userStats || (completedBattles.length || activeBattles.length ? computeDemoStats(participations) : null);
 
-  const openTradeModal = (contestId: number) => {
+  const openTradeModal = async (contestId: number) => {
     const contest = contests.find((c) => c.id === contestId);
     if (contest && !isContestBellOpen(contest)) {
       showToast('Bell has rung — trading is closed', 'error');
@@ -471,6 +482,14 @@ export default function TradR() {
     if (contest && !isContestTradingOpen(contest)) {
       showToast("Pit opens soon — you're rang in. Trading starts when the bell opens.", 'error');
       return;
+    }
+    if (contest?.assets?.length) {
+      try {
+        await fetchLivePrices(contest.assets);
+      } catch {
+        showToast('Could not refresh prices — try again', 'error');
+        return;
+      }
     }
     const firstAsset = contest?.assets[0] || '';
     setTradingContestId(contestId);
@@ -1074,7 +1093,9 @@ export default function TradR() {
             onTradeShares={setTradeShares}
             onTradeSide={setTradeSide}
             onClearChart={() => setSelectedChartSymbol('')}
-            onRefreshPrices={fetchLivePrices}
+            onRefreshPrices={async () => {
+              await fetchLivePrices(tc.assets);
+            }}
             onExecuteTrade={handleTrade}
           />
         );

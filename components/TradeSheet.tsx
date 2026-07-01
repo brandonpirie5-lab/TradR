@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Info, X } from 'lucide-react';
 import AssetChart from './AssetChart';
 import AssetChip from './AssetChip';
@@ -44,7 +44,7 @@ type TradeSheetProps = {
   onTradeShares: (shares: string) => void;
   onTradeSide: (side: 'buy' | 'sell') => void;
   onClearChart: () => void;
-  onRefreshPrices: () => void;
+  onRefreshPrices: () => void | Promise<void>;
   onExecuteTrade: () => void;
 };
 
@@ -77,6 +77,22 @@ export default function TradeSheet({
   onExecuteTrade,
 }: TradeSheetProps) {
   void bellTick;
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
+
+  const refreshPrices = async () => {
+    setRefreshingPrices(true);
+    try {
+      await onRefreshPrices();
+    } finally {
+      setRefreshingPrices(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshPrices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contestId]);
+
   const pnlPct = ((liveValue / participation.startingValue) - 1) * 100;
   const calm = useCalmLiveStats({
     liveValue,
@@ -184,11 +200,18 @@ export default function TradeSheet({
           </div>
         )}
 
-        {stale && (
+        {(stale || refreshingPrices) && (
           <div className="ts-stale">
-            Prices over 30s old.
-            <button type="button" onClick={onRefreshPrices} className="ml-2 text-accent underline">
-              Refresh
+            {refreshingPrices
+              ? 'Updating live prices…'
+              : 'Prices over 30s old.'}
+            <button
+              type="button"
+              onClick={() => void refreshPrices()}
+              disabled={refreshingPrices}
+              className="ml-2 text-accent underline disabled:opacity-50"
+            >
+              {refreshingPrices ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
         )}

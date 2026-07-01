@@ -138,7 +138,7 @@ export function useGameState({
   const autoSettledIdsRef = useRef<Set<number>>(new Set());
   const serverSettledShownRef = useRef<Set<number>>(loadSeenSettlementIds());
   const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const priceFetchRunningRef = useRef(false);
+  const priceFetchChainRef = useRef<Promise<Record<string, number>>>(Promise.resolve(initialPrices));
   const syncGameRef = useRef<() => Promise<void>>(async () => {});
   const loadProfileExtrasRef = useRef(loadProfileExtras);
   const onSettlementRef = useRef(onSettlement);
@@ -309,28 +309,32 @@ export function useGameState({
 
   const fetchLivePrices = useCallback(
     async (symbolsToFetch?: string[]) => {
-      const symbols = symbolsToFetch || getAllSymbolsFromContests(contests);
-      if (symbols.length === 0) return prices;
-      if (priceFetchRunningRef.current) return prices;
+      const symbols = symbolsToFetch?.length
+        ? symbolsToFetch
+        : getAllSymbolsFromContests(contests);
+      if (symbols.length === 0) return pricesRef.current;
 
-      priceFetchRunningRef.current = true;
-      try {
-        const res = await fetch(`/api/prices?symbols=${symbols.join(',')}`);
-        if (!res.ok) throw new Error('price api failed');
-        const fresh: Record<string, number> = await res.json();
+      const runFetch = async (): Promise<Record<string, number>> => {
+        try {
+          const res = await fetch(`/api/prices?symbols=${symbols.join(',')}`);
+          if (!res.ok) throw new Error('price api failed');
+          const fresh: Record<string, number> = await res.json();
+          const updated = { ...pricesRef.current, ...fresh };
+          setPrices(updated);
+          setLastPriceUpdate(new Date());
+          return updated;
+        } catch (err) {
+          console.warn('Live price fetch failed', err);
+          return pricesRef.current;
+        }
+      };
 
-        const updated = { ...prices, ...fresh };
-        setPrices(updated);
-        setLastPriceUpdate(new Date());
-        return updated;
-      } catch (err) {
-        console.warn('Live price fetch failed', err);
-        return prices;
-      } finally {
-        priceFetchRunningRef.current = false;
-      }
+      // Chain requests so refresh/join never no-ops behind an in-flight fetch.
+      const next = priceFetchChainRef.current.then(runFetch, runFetch);
+      priceFetchChainRef.current = next;
+      return next;
     },
-    [contests, prices]
+    [contests]
   );
 
   syncGameRef.current = syncGameFromServer;
@@ -466,6 +470,7 @@ export function useGameState({
           setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
           onJoinFlash(contest.title);
           const fresh = contests.find((c) => c.id === contestId) ?? contest;
+          if (contest.assets?.length) await fetchLivePrices(contest.assets);
           onRouteAfterJoin(fresh);
           if (isContestTradingOpen(fresh)) {
             onScheduleTrade(contestId);
@@ -505,6 +510,7 @@ export function useGameState({
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
       onJoinFlash(contest.title);
+      if (contest.assets?.length) await fetchLivePrices(contest.assets);
       onRouteAfterJoin(contest);
       if (isContestTradingOpen(contest)) {
         onScheduleTrade(contestId);
@@ -522,6 +528,7 @@ export function useGameState({
       setProfile,
       syncGameFromServer,
       refreshLeaderboard,
+      fetchLivePrices,
       onJoinFlash,
       onRouteAfterJoin,
       onScheduleTrade,
@@ -1077,7 +1084,7 @@ export function useGameState({
   useEffect(() => {
     const symbols = getAllSymbolsFromContests(contests);
     if (!symbols.length) return;
-    const interval = setInterval(() => fetchLivePrices(symbols), 60000);
+    const interval = setInterval(() => fetchLivePrices(symbols), 20_000);
     return () => clearInterval(interval);
   }, [contests, fetchLivePrices]);
 
