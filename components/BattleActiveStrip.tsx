@@ -28,7 +28,7 @@ export default function BattleActiveStrip({
   onTrade,
 }: BattleActiveStripProps) {
   const calm = useCalmLiveStats({ liveValue, pnlPct, rank });
-  const zone = analyzeMoneyZone(board, calm.displayValue, contest.slug, true);
+  const zone = analyzeMoneyZone(board, calm.displayValue, contest.slug, true, contest.entryFee);
   const zoneTone =
     zone.status === 'in-the-money' || zone.status === 'solo'
       ? 'bt-strip-zone-in'

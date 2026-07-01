@@ -4,7 +4,7 @@ import React from 'react';
 import { Scissors } from 'lucide-react';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
 import { getPaidRankCount } from '../lib/money-zone';
-import { payoutForContestRank } from '../lib/pit-payouts';
+import { payoutForContestRankLive } from '../lib/pit-pool-math';
 import MoneyZoneBar from './MoneyZoneBar';
 
 export default function PitLeaderboardPanel({
@@ -18,7 +18,7 @@ export default function PitLeaderboardPanel({
   yourValue: number;
   compact?: boolean;
 }) {
-  const paidRanks = getPaidRankCount(contest.slug);
+  const paidRanks = getPaidRankCount(contest.slug, entries.length, contest.entryFee);
   const cutoff = paidRanks > 0 ? entries[paidRanks - 1] : null;
 
   if (!entries.length) {
@@ -35,6 +35,7 @@ export default function PitLeaderboardPanel({
         entries={entries}
         yourValue={yourValue}
         slug={contest.slug}
+        entryFee={contest.entryFee}
         compact={compact}
       />
 
@@ -53,7 +54,12 @@ export default function PitLeaderboardPanel({
         {entries.map((entry) => {
           const inMoney = entry.rank <= paidRanks;
           const isCutoff = entry.rank === paidRanks;
-          const payout = inMoney ? payoutForContestRank(entry.rank, contest.slug) : 0;
+          const payout = inMoney
+            ? payoutForContestRankLive(entry.rank, contest.slug, {
+                entryFee: contest.entryFee,
+                participantCount: entries.length,
+              })
+            : 0;
 
           return (
             <div

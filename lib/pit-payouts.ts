@@ -48,13 +48,13 @@ function assertPool(id: string, tiers: PayoutTier[], expected: number) {
   }
 }
 
-/** Swap Royale free board — $150 pool, 40 winners, min 40 to run. */
+/** Free board — house-funded pool scales with turnout (see pit-pool-math). */
 const FREE_WIDE: PitPayoutStructure = {
   id: 'free-wide',
   mode: 'wide-board',
   label: 'Wide Board',
-  hook: 'Top 40 cash — free entry, real prizes.',
-  minEntries: 40,
+  hook: 'Free entry — house pool grows with turnout ($15–$40 at launch).',
+  minEntries: 10,
   maxEntries: 350,
   totalPool: 150,
   tiers: [
@@ -70,13 +70,13 @@ const FREE_WIDE: PitPayoutStructure = {
   ],
 };
 
-/** Swap Royale $5 / $500 pool — top 20, min 20. */
+/** $5 entry — pool = entries collected (capped at $500 catalog max). */
 const PAID_TOP_20: PitPayoutStructure = {
   id: 'paid-top-20',
   mode: 'top-20',
   label: 'Top 20 Split',
-  hook: '$500 pool — 1st takes $125, top 20 paid.',
-  minEntries: 20,
+  hook: 'Pool grows with entries — $30 at 6 traders, up to $500.',
+  minEntries: 6,
   maxEntries: 120,
   totalPool: 500,
   tiers: [
@@ -96,8 +96,8 @@ const TRIPLE_UP: PitPayoutStructure = {
   id: 'triple-up',
   mode: 'triple-up',
   label: 'Triple Up',
-  hook: 'Top 15 each take $30 — 3× your $10 entry.',
-  minEntries: 15,
+  hook: 'Pool = entries in — top 15 paid when the field is big enough.',
+  minEntries: 5,
   maxEntries: 55,
   totalPool: 450,
   tiers: [{ rankStart: 1, rankEnd: 15, amount: 30 }],
@@ -108,8 +108,8 @@ const DOUBLE_UP: PitPayoutStructure = {
   id: 'double-up',
   mode: 'double-up',
   label: 'Double Up',
-  hook: 'Top 22 double up — $20 each on a $10 ticket.',
-  minEntries: 15,
+  hook: 'Pool = entries in — top ~40% paid, scaled to fill.',
+  minEntries: 5,
   maxEntries: 55,
   totalPool: 440,
   tiers: [{ rankStart: 1, rankEnd: 22, amount: 20 }],
@@ -120,8 +120,8 @@ const PAID_MID_BOARD: PitPayoutStructure = {
   id: 'paid-mid-board',
   mode: 'deep-board',
   label: 'Top 18 Split',
-  hook: '$380 pool — macro day, deep payouts.',
-  minEntries: 18,
+  hook: 'Pool grows with entries — scales to $380 cap.',
+  minEntries: 6,
   maxEntries: 150,
   totalPool: 380,
   tiers: [
@@ -141,8 +141,8 @@ const MEME_BOARD: PitPayoutStructure = {
   id: 'meme-board',
   mode: 'deep-board',
   label: 'Top 20 Split',
-  hook: '$420 pool — degen tape, 20 winners.',
-  minEntries: 20,
+  hook: 'Pool grows with entries — scales to $420 cap.',
+  minEntries: 6,
   maxEntries: 200,
   totalPool: 420,
   tiers: [
@@ -160,8 +160,8 @@ const GOLD_BOARD: PitPayoutStructure = {
   id: 'gold-board',
   mode: 'deep-board',
   label: 'Top 15 Split',
-  hook: '$520 pool — macro tape, heavy 1st.',
-  minEntries: 15,
+  hook: 'Pool grows with entries — scales to $520 cap.',
+  minEntries: 5,
   maxEntries: 80,
   totalPool: 520,
   tiers: [
@@ -180,8 +180,8 @@ const WEEKEND_BOARD: PitPayoutStructure = {
   id: 'weekend-board',
   mode: 'deep-board',
   label: 'Top 20 Split',
-  hook: '$600 pool — weekend carnage, top 20 cash.',
-  minEntries: 20,
+  hook: 'Pool grows with entries — scales to $600 cap.',
+  minEntries: 6,
   maxEntries: 100,
   totalPool: 600,
   tiers: [

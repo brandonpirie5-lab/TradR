@@ -56,7 +56,7 @@ import JoinPitFlash from '../components/JoinPitFlash';
 import HowItWorksModal from '../components/HowItWorksModal';
 import PitMomentBanner from '../components/PitMomentBanner';
 import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
-import { payoutForContestRank } from '../lib/pit-payouts';
+import { payoutForContestRankLive } from '../lib/pit-pool-math';
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import {
   findContestForWeekPit,
@@ -493,7 +493,10 @@ export default function TradR() {
       username: e.username,
       finalRank: e.rank,
       finalValue: e.portfolioValue,
-      payout: payoutForContestRank(e.rank, c?.slug),
+      payout: payoutForContestRankLive(e.rank, c?.slug, {
+        entryFee: c?.entryFee ?? 0,
+        participantCount: board.length,
+      }),
       cash: e.isYou ? p?.cash : undefined,
       positions: e.isYou ? p?.positions : undefined,
       isYou: e.isYou,

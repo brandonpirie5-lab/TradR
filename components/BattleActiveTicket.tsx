@@ -45,7 +45,7 @@ export default function BattleActiveTicket({
   const [positionsOpen, setPositionsOpen] = useState(false);
   const positions = participation.positions;
   const calm = useCalmLiveStats({ liveValue, pnlPct, rank });
-  const zone = analyzeMoneyZone(board, calm.displayValue, contest.slug, true);
+  const zone = analyzeMoneyZone(board, calm.displayValue, contest.slug, true, contest.entryFee);
   const zoneTone =
     zone.status === 'in-the-money' || zone.status === 'solo'
       ? 'bt-ticket-zone-in'
@@ -131,6 +131,7 @@ export default function BattleActiveTicket({
             entries={board}
             yourValue={calm.displayValue}
             slug={contest.slug}
+            entryFee={contest.entryFee}
             compact={!hero}
             hero={hero}
           />

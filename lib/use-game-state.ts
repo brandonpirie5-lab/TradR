@@ -31,7 +31,7 @@ import {
 } from './pit-contests';
 import { getOpeningBellStreak, recordOpeningBellDay, applyServerStreakSnapshot } from './opening-bell-streak';
 import { getContestRules } from './contest-rules';
-import { payoutForContestRank } from './pit-payouts';
+import { payoutForContestRankLive } from './pit-pool-math';
 import { loadSeenSettlementIds, markSettlementSeen } from './settlement-storage';
 import {
   isContestBellOpen,
@@ -671,7 +671,10 @@ export function useGameState({
 
       const board = getContestBoard(contestId);
       const rank = board.findIndex((v) => v.isYou) + 1 || 5;
-      const payout = payoutForContestRank(rank, c.slug);
+      const payout = payoutForContestRankLive(rank, c.slug, {
+        entryFee: c.entryFee,
+        participantCount: board.length,
+      });
       const newBal = userBalance + payout;
       setUserBalance(newBal);
       setContests(contests.map((x) => (x.id === contestId ? { ...x, status: 'closed' as const } : x)));

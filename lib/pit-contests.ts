@@ -8,6 +8,7 @@ import {
   resolveContestAssets,
 } from './pit-asset-schedule';
 import { getCatalogPayoutFields } from './pit-payouts';
+import { computeEffectivePool, getLiveFirstPrize } from './pit-pool-math';
 import { buildDemoPitWindow } from './pit-schedule';
 import { buildWeekSlateDemoContests } from './week-slate';
 
@@ -81,10 +82,17 @@ const CATALOG_SPECS = [
 ] as const;
 
 /** TradR Pit contest lineup — prize fields synced from pit-payouts structures. */
-export const PIT_CONTEST_CATALOG = CATALOG_SPECS.map((spec) => ({
-  ...spec,
-  ...getCatalogPayoutFields(spec.slug),
-}));
+export const PIT_CONTEST_CATALOG = CATALOG_SPECS.map((spec) => {
+  const catalog = getCatalogPayoutFields(spec.slug);
+  const atMin = { entryFee: spec.entryFee, participantCount: catalog.minEntries };
+  return {
+    ...spec,
+    ...catalog,
+    firstPrize: getLiveFirstPrize(spec.slug, atMin),
+    totalPrizes: computeEffectivePool(spec.slug, atMin),
+    totalPrizesMax: catalog.totalPrizes,
+  };
+});
 
 /** Old DB / SwapRoyale-era titles → slug (keeps participations linked). */
 const LEGACY_TITLE_MAP: Record<string, string> = {

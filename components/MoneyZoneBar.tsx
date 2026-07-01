@@ -5,24 +5,31 @@ import { DollarSign, TrendingUp, AlertCircle, Crown } from 'lucide-react';
 import { LeaderboardEntry } from '../lib/game-types';
 import { analyzeMoneyZone } from '../lib/money-zone';
 import { getPayoutStructure } from '../lib/pit-payouts';
+import { computeEffectivePool } from '../lib/pit-pool-math';
 import { PitPayoutChip } from './PitMoneyDisplay';
 
 export default function MoneyZoneBar({
   entries,
   yourValue,
   slug,
+  entryFee = 0,
   compact = false,
   hero = false,
 }: {
   entries: LeaderboardEntry[];
   yourValue: number;
   slug?: string;
+  entryFee?: number;
   compact?: boolean;
   /** Full-width emphasis — primary widget on battle card / trade ticket */
   hero?: boolean;
 }) {
-  const insight = analyzeMoneyZone(entries, yourValue, slug, true);
+  const insight = analyzeMoneyZone(entries, yourValue, slug, true, entryFee);
   const payout = getPayoutStructure(slug);
+  const livePool = computeEffectivePool(slug, {
+    entryFee,
+    participantCount: Math.max(entries.length, 1),
+  });
 
   const icon =
     insight.status === 'in-the-money' || insight.status === 'solo' ? (
@@ -91,7 +98,7 @@ export default function MoneyZoneBar({
       {insight.paidRanks > 0 && (
         <div className="money-zone-footer flex justify-between text-[9px] text-muted mt-1 font-mono">
           <span>
-            {payout.label}: top {insight.paidRanks} · ${payout.totalPool} pool
+            {payout.label}: top {insight.paidRanks} · ${livePool.toLocaleString()} pool
           </span>
           <span className={showCutoff ? '' : 'invisible'} aria-hidden={!showCutoff}>
             #{insight.paidRanks} at ${insight.cutoffValue?.toLocaleString() ?? '—'}

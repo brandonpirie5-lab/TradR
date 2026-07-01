@@ -169,7 +169,13 @@ export default function TradeSheet({
         </div>
 
         <div className="ts-zone">
-          <MoneyZoneBar entries={board} yourValue={calm.displayValue} slug={contest.slug} hero />
+          <MoneyZoneBar
+            entries={board}
+            yourValue={calm.displayValue}
+            slug={contest.slug}
+            entryFee={contest.entryFee}
+            hero
+          />
         </div>
 
         {tradeLimit && !tradeLimit.unlimited && (

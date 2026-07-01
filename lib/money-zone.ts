@@ -1,5 +1,6 @@
 import { LeaderboardEntry } from './game-types';
-import { countPaidRanks, getPayoutStructure, payoutForContestRank } from './pit-payouts';
+import { computeMaxPaidRank, payoutForContestRankLive } from './pit-pool-math';
+import { getPayoutStructure } from './pit-payouts';
 
 export type MoneyZoneStatus =
   | 'in-the-money'
@@ -22,18 +23,27 @@ export type MoneyZoneInsight = {
   progressPct: number;
 };
 
-export function getPaidRankCount(slug?: string | null): number {
-  return countPaidRanks(getPayoutStructure(slug));
+export function getPaidRankCount(
+  slug?: string | null,
+  participantCount?: number,
+  entryFee = 0
+): number {
+  const structure = getPayoutStructure(slug);
+  const count = participantCount ?? structure.minEntries;
+  return computeMaxPaidRank(slug, count);
 }
 
 export function analyzeMoneyZone(
   entries: LeaderboardEntry[],
   yourValue: number,
   slug: string | undefined,
-  isYouInList: boolean
+  isYouInList: boolean,
+  entryFee = 0
 ): MoneyZoneInsight {
   const sorted = [...entries].sort((a, b) => b.portfolioValue - a.portfolioValue);
-  const paidRanks = getPaidRankCount(slug);
+  const participantCount = Math.max(sorted.length, 1);
+  const paidRanks = getPaidRankCount(slug, participantCount, entryFee);
+  const payoutCtx = { entryFee, participantCount };
   const you = sorted.find((e) => e.isYou);
   const rank = you?.rank ?? (isYouInList ? null : null);
 
@@ -60,7 +70,7 @@ export function analyzeMoneyZone(
       yourValue,
       cutoffValue: yourValue,
       gapToMoney: 0,
-      projectedPayout: payoutForContestRank(1, slug),
+      projectedPayout: payoutForContestRankLive(1, slug, payoutCtx),
       headline: 'Solo on the tape',
       detail: `You're #1 — need ${getPayoutStructure(slug).minEntries} traders minimum for the pit to run.`,
       progressPct: 100,
@@ -89,7 +99,9 @@ export function analyzeMoneyZone(
     };
   }
 
-  const projectedPayout = actualRank ? payoutForContestRank(actualRank, slug) : 0;
+  const projectedPayout = actualRank
+    ? payoutForContestRankLive(actualRank, slug, payoutCtx)
+    : 0;
   const gapToMoney =
     cutoffValue != null && actualRank != null && actualRank > effectivePaidRanks
       ? Math.max(0, cutoffValue - yourValue + 1)

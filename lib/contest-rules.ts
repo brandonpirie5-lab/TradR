@@ -4,6 +4,7 @@ import {
   getPayoutStructure,
   getPrizeBreakdown as getStructurePrizeBreakdown,
 } from './pit-payouts';
+import { getLivePrizeTiers } from './pit-pool-math';
 
 const DURATION_HOURS: Record<string, number> = {
   'opening-bell': 20,
@@ -44,6 +45,11 @@ function prizeSection(slug: string | undefined, entryFee: number): RuleSection {
       ? `Pit needs at least ${structure.minEntries} traders or entry fees refund.`
       : `Pit needs at least ${structure.minEntries} traders or the contest voids.`;
 
+  const fundingLine =
+    entryFee > 0
+      ? `Paid pits: prize pool = entry fees collected (up to $${structure.totalPool.toLocaleString()} cap). Fewer traders = smaller pool and fewer paid ranks.`
+      : 'Free pits: TradR funds a house pool that grows with turnout ($15–$40 at launch).';
+
   const tierLines = getStructurePrizeBreakdown(slug).map((tier) => {
     const each = tier.winnerCount > 1 ? ' each' : '';
     const ranks =
@@ -54,9 +60,10 @@ function prizeSection(slug: string | undefined, entryFee: number): RuleSection {
   return {
     title: 'Prize pool',
     items: [
-      `${structure.label} — $${structure.totalPool.toLocaleString()} fixed pool.`,
+      `${structure.label} — up to $${structure.totalPool.toLocaleString()} pool.`,
+      fundingLine,
       structure.hook,
-      `Top ${winners} traders cash when the bell rings.`,
+      `Up to ${winners} traders cash when the bell rings (condensed to field size at low fill).`,
       ...tierLines,
       refundNote,
       'Prizes credit to your TradR balance after settlement.',
@@ -175,7 +182,7 @@ const SLUG_OVERRIDES: Partial<Record<string, SlugOverride>> = {
       ],
       'Entry & refunds': [
         'Free entry — no wallet charge for this pit.',
-        'Pit needs at least 40 traders to run; otherwise the contest voids (no fee to refund).',
+        'Pit needs at least 10 traders to run; otherwise the contest voids (no fee to refund).',
         'Capacity: up to 350 traders per daily bell.',
       ],
     },
@@ -418,8 +425,11 @@ export type PrizeTier = {
 };
 
 export function getPrizeBreakdown(
-  contest: Pick<Contest, 'slug' | 'firstPrize' | 'totalPrizes'>
+  contest: Pick<Contest, 'slug' | 'firstPrize' | 'totalPrizes' | 'entryFee' | 'entries'>
 ): PrizeTier[] {
+  const count = Math.max(contest.entries ?? 0, getPayoutStructure(contest.slug).minEntries);
+  const live = getLivePrizeTiers(contest.slug, contest.entryFee ?? 0, count);
+  if (live.length) return live;
   return getStructurePrizeBreakdown(contest.slug).map((tier) => ({
     rank: tier.rank,
     label:
