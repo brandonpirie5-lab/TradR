@@ -1,18 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trophy, User, Target, Zap } from 'lucide-react';
+import { Trophy, User, LayoutGrid, Zap } from 'lucide-react';
 
 export default function OnboardingPit({
   onComplete,
   onSetUsername,
   onJoinFreePit,
   defaultUsername,
+  freePitName = 'Opening Bell',
 }: {
-  onComplete: () => void;
+  onComplete: (opts?: { skipped?: boolean }) => void;
   onSetUsername: (name: string) => Promise<void>;
   onJoinFreePit: () => Promise<void>;
   defaultUsername?: string;
+  freePitName?: string;
 }) {
   const [step, setStep] = useState(0);
   const [username, setUsername] = useState(defaultUsername || '');
@@ -21,28 +23,32 @@ export default function OnboardingPit({
   const steps = [
     {
       icon: Trophy,
-      title: 'Welcome to the Pit',
-      body: 'Live fantasy trading. Fake money, real ego. Outtrade the room before the bell rings.',
+      title: 'Welcome to TradR Pit',
+      body: 'Live trading contests with $100,000 in play money. Out-trade the room before the bell rings — top spots can win real prizes.',
     },
     {
       icon: User,
-      title: 'Claim your tape name',
-      body: 'This is how you show up on the feed, vault, and leaderboard. Make it memorable — or regrettable.',
+      title: 'Pick your display name',
+      body: 'This is how you show up on the leaderboard and live tape. Keep it simple — your family will see it.',
     },
     {
-      icon: Target,
-      title: 'Follow the money zone',
-      body: 'Green = in the money. Yellow = on the bubble. Every trade card shows exactly how far you are from a real payout — not just your rank.',
+      icon: LayoutGrid,
+      title: 'Three tabs, that’s it',
+      body: null as string | null,
     },
     {
       icon: Zap,
-      title: 'Ring your first ticket',
-      body: 'Opening Bell Bloodbath is free and always on. Make one trade, watch your money zone move, then scout today\'s paid pits.',
+      title: 'Join your first pit — free',
+      body: `${freePitName} costs nothing to enter. We’ll ring you in, then you can make your first trade when the bell opens.`,
     },
   ];
 
   const StepIcon = steps[step].icon;
   const totalSteps = steps.length;
+
+  const finish = (opts?: { skipped?: boolean }) => {
+    onComplete(opts);
+  };
 
   const handleNext = async () => {
     if (step === 1) {
@@ -65,7 +71,7 @@ export default function OnboardingPit({
         /* join optional */
       } finally {
         setLoading(false);
-        onComplete();
+        finish();
       }
       return;
     }
@@ -74,12 +80,12 @@ export default function OnboardingPit({
 
   const ctaLabel =
     step === 0
-      ? 'ENTER THE ARENA'
+      ? 'LET’S GO'
       : step === 1
-        ? 'LOCK IN NAME'
+        ? 'SAVE NAME'
         : step === 2
           ? 'GOT IT'
-          : 'RING IN FREE';
+          : 'JOIN FREE PIT';
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center p-5">
@@ -102,12 +108,14 @@ export default function OnboardingPit({
             Step {step + 1} of {totalSteps}
           </div>
           <div className="font-black text-2xl tracking-tight mb-2">{steps[step].title}</div>
-          <p className="text-sm text-secondary leading-relaxed">{steps[step].body}</p>
+          {steps[step].body && (
+            <p className="text-sm text-secondary leading-relaxed">{steps[step].body}</p>
+          )}
         </div>
 
         {step === 1 && (
           <div className="mb-5">
-            <div className="text-[10px] text-muted tracking-widest mb-1 text-center">TAPE NAME</div>
+            <div className="text-[10px] text-muted tracking-widest mb-1 text-center">DISPLAY NAME</div>
             <div className="flex items-center bg-surface border border-card rounded-xl overflow-hidden">
               <span className="pl-3 text-muted font-mono">@</span>
               <input
@@ -116,23 +124,26 @@ export default function OnboardingPit({
                 placeholder="yourname"
                 className="flex-1 bg-transparent py-3 pr-3 font-bold focus:outline-none"
                 maxLength={20}
+                autoFocus
               />
             </div>
           </div>
         )}
 
         {step === 2 && (
-          <div className="mb-5 rounded-xl border border-yellow-500/25 bg-yellow-500/5 p-3 text-left text-[11px] text-muted space-y-1.5">
-            <div className="flex items-center gap-2 text-yellow-300 font-bold text-xs">
-              <span className="w-2 h-2 rounded-full bg-yellow-400" />
-              On the bubble
+          <div className="mb-5 rounded-xl border border-card bg-surface/50 p-4 text-left text-sm text-secondary space-y-3">
+            <div>
+              <span className="text-accent font-bold">Arena</span>
+              <span className="text-muted"> — browse today’s pits and ring in with one tap.</span>
             </div>
-            <p>+$842 to pass @tape into the cash zone.</p>
-            <div className="flex items-center gap-2 text-accent font-bold text-xs mt-2">
-              <span className="w-2 h-2 rounded-full bg-accent" />
-              In the money
+            <div>
+              <span className="text-accent font-bold">Battles</span>
+              <span className="text-muted"> — trade stocks & crypto when your pit opens.</span>
             </div>
-            <p>Projected payout: $125 — defend your spot.</p>
+            <div>
+              <span className="text-accent font-bold">Vault</span>
+              <span className="text-muted"> — live leaderboard: who’s winning right now.</span>
+            </div>
           </div>
         )}
 
@@ -145,14 +156,14 @@ export default function OnboardingPit({
         </button>
 
         {step === 3 && (
-          <button onClick={onComplete} className="w-full mt-2 text-xs text-muted py-2">
-            Skip — browse the arena first
+          <button onClick={() => finish({ skipped: true })} className="w-full mt-2 text-xs text-muted py-2">
+            Skip — look around first
           </button>
         )}
 
         {step < 3 && (
-          <button onClick={onComplete} className="w-full mt-2 text-xs text-muted py-2">
-            Skip onboarding
+          <button onClick={() => finish({ skipped: true })} className="w-full mt-2 text-xs text-muted py-2">
+            Skip intro
           </button>
         )}
       </div>

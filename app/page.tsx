@@ -65,6 +65,7 @@ import {
 } from '../lib/week-join';
 import { DAY_THEMES } from '../lib/tape-week';
 import { markSettlementSeen } from '../lib/settlement-storage';
+import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
 import {
   isContestBellOpen,
   isContestTradingOpen,
@@ -356,10 +357,9 @@ export default function TradR() {
   }, []);
 
   useEffect(() => {
-    if (!user || authLoading) return;
-    const done = localStorage.getItem('tradr_pit_onboarded');
-    if (!done && usingServerGame) setShowOnboarding(true);
-  }, [user, authLoading, usingServerGame]);
+    if (!user?.id || authLoading || !usingServerGame) return;
+    if (!hasCompletedOnboarding(user.id)) setShowOnboarding(true);
+  }, [user?.id, authLoading, usingServerGame]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -633,12 +633,16 @@ export default function TradR() {
       }
       if (isSigningUp) {
         localStorage.removeItem('tradr_ref');
+        if (data.session) {
+          setShowOnboarding(true);
+          setActiveTab('home');
+        }
         showToast(
           data.needsEmailConfirmation
             ? 'Account created! Check your email to confirm, then sign in.'
             : referralCode
               ? 'Welcome to the Pit! Referral bonus applied.'
-              : 'Account created — enter the Pit!'
+              : 'Account created — welcome to the Pit!'
         );
       } else {
         showToast('Logged in successfully');
@@ -691,9 +695,10 @@ export default function TradR() {
     }
   };
 
-  const completeOnboarding = () => {
-    localStorage.setItem('tradr_pit_onboarded', '1');
+  const completeOnboarding = (opts?: { skipped?: boolean }) => {
+    markOnboardingComplete(user?.id);
     setShowOnboarding(false);
+    if (opts?.skipped) setActiveTab('home');
   };
 
   const openingBellContest = canonicalOpeningBell;
@@ -814,7 +819,7 @@ export default function TradR() {
         </div>
       ) : null}
 
-      {activeTab === 'home' && <ArenaTabHint />}
+      {activeTab === 'home' && <ArenaTabHint suppressed={showOnboarding} />}
 
       {activeTab === 'entries' && (
         <PitTabChrome
@@ -1160,6 +1165,7 @@ export default function TradR() {
       {showOnboarding && user && (
         <OnboardingPit
           defaultUsername={profile?.username || user.email?.split('@')[0] || ''}
+          freePitName={openingBellContest?.title || 'Opening Bell'}
           onComplete={completeOnboarding}
           onSetUsername={async (name) => {
             await updateUsername(name);
@@ -1169,7 +1175,6 @@ export default function TradR() {
             if (openingBellContest && !joinedContests.includes(openingBellContest.id)) {
               await joinArena(openingBellContest.id);
             }
-            completeOnboarding();
           }}
         />
       )}

@@ -3,17 +3,19 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
-const ARENA_TAB_HINT_KEY = 'tradr_arena_tab_hint_shown';
+import { ARENA_TAB_HINT_KEY } from '../lib/onboarding-storage';
 
-export default function ArenaTabHint() {
+export default function ArenaTabHint({ suppressed = false }: { suppressed?: boolean }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || suppressed) return;
     if (!localStorage.getItem(ARENA_TAB_HINT_KEY)) {
       setVisible(true);
     }
-  }, []);
+  }, [suppressed]);
+
+  if (suppressed) return null;
 
   const dismiss = () => {
     localStorage.setItem(ARENA_TAB_HINT_KEY, '1');
