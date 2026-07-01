@@ -42,6 +42,45 @@ export function PitProjectedPayout({
   return <span className={className}>~${amount.toLocaleString()} at this fill</span>;
 }
 
+/** Prominent live pool strip for Arena hero. */
+export function PitLivePoolStrip({
+  slug,
+  entryFee = 5,
+  participantCount = 0,
+  className = '',
+}: {
+  slug?: string | null;
+  entryFee?: number;
+  participantCount?: number;
+  className?: string;
+}) {
+  const structure = getPayoutStructure(slug);
+  const count = Math.max(participantCount, 0);
+  const displayCount = count > 0 ? count : structure.minEntries;
+  const livePool = computeEffectivePool(slug, { entryFee, participantCount: displayCount });
+  const paid = computeMaxPaidRank(slug, displayCount);
+  const poolLabel = count >= structure.minEntries ? `$${livePool.toLocaleString()}` : count > 0 ? `$${livePool.toLocaleString()}*` : '—';
+
+  return (
+    <div className={`at-pool-strip ${className}`.trim()} role="status">
+      <div className="at-pool-strip-stat">
+        <span className="at-pool-strip-val">{poolLabel}</span>
+        <span className="at-pool-strip-lbl">prize pool{count > 0 && count < structure.minEntries ? ' at fill' : ''}</span>
+      </div>
+      <span className="at-pool-strip-sep" aria-hidden />
+      <div className="at-pool-strip-stat">
+        <span className="at-pool-strip-val">{count > 0 ? count : '—'}</span>
+        <span className="at-pool-strip-lbl">traders</span>
+      </div>
+      <span className="at-pool-strip-sep" aria-hidden />
+      <div className="at-pool-strip-stat">
+        <span className="at-pool-strip-val">{paid > 0 ? paid : '—'}</span>
+        <span className="at-pool-strip-lbl">get paid</span>
+      </div>
+    </div>
+  );
+}
+
 export function PitPoolSummary({
   slug,
   entryFee = 5,

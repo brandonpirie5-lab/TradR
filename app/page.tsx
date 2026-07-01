@@ -20,7 +20,7 @@ import VaultTab from '../components/VaultTab';
 import ProfileTab from '../components/ProfileTab';
 import TradeSheet from '../components/TradeSheet';
 
-import { REFERRAL_TIERS } from '../lib/referral-program';
+
 import { useHydrated } from '../lib/use-hydrated';
 import { supabase, isSupabaseConfigured, Profile } from '../lib/supabase';
 import {
@@ -29,7 +29,6 @@ import {
   ActivityItem,
   ContestRecap,
   TradeLogEntry,
-  ReferralStats,
 } from '../lib/game-types';
 import {
   fetchMyStats,
@@ -37,19 +36,18 @@ import {
   fetchContestRecap,
   updateUsername,
   createDepositCheckout,
-  fetchReferralStats,
 } from '../lib/game-api';
 import { useGameState, type SettlementResult, type TradeCompletePayload } from '../lib/use-game-state';
 import { initialContests } from '../lib/game-constants';
-import { getPitFillStatus } from '../lib/contest-fill';
+
 import JoinPitFlash from '../components/JoinPitFlash';
 import HowItWorksModal from '../components/HowItWorksModal';
 import PitMomentBanner from '../components/PitMomentBanner';
 import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
-import { computeEffectivePool, payoutForContestRankLive } from '../lib/pit-pool-math';
+import { computeEffectivePool, computeMaxPaidRank, payoutForContestRankLive } from '../lib/pit-pool-math';
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import { findDailyPitContest } from '../lib/pit-contests';
-import { DAILY_PIT_SLUG } from '../lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
 import { markSettlementSeen } from '../lib/settlement-storage';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
 import {
@@ -82,10 +80,8 @@ export default function TradR() {
   const [highlightDoneContestId, setHighlightDoneContestId] = useState<number | null>(null);
   const [userStats, setUserStats] = useState<UserPerformanceStats | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'invite' | 'activity'>('overview');
+  const [profileSection, setProfileSection] = useState<'overview' | 'activity'>('overview');
   const [recapData, setRecapData] = useState<ContestRecap | null>(null);
-  const [referralCopied, setReferralCopied] = useState(false);
-  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
   const [profileExtrasLoading, setProfileExtrasLoading] = useState(false);
   const [lastTradeFlash, setLastTradeFlash] = useState<{
     rankBefore: number;
@@ -107,14 +103,12 @@ export default function TradR() {
     if (!isSupabaseConfigured || !user) return;
     setProfileExtrasLoading(true);
     try {
-      const [stats, acts, refStats] = await Promise.all([
+      const [stats, acts] = await Promise.all([
         fetchMyStats().catch(() => null),
         fetchActivity(25).catch(() => []),
-        fetchReferralStats().catch(() => null),
       ]);
       if (stats) setUserStats(stats);
       setActivities(acts);
-      if (refStats) setReferralStats(refStats);
     } catch (e) {
       console.warn('Profile extras load failed', e);
     } finally {
@@ -240,36 +234,6 @@ export default function TradR() {
 
   const infoContest = infoContestId != null ? contests.find((c) => c.id === infoContestId) : null;
 
-  const referralLink = () => {
-    const code =
-      referralStats?.referralCode ||
-      profile?.referral_code ||
-      `pit${user?.id?.replace(/-/g, '').slice(0, 8) || 'demo'}`;
-    return `${typeof window !== 'undefined' ? window.location.origin : ''}?ref=${code}`;
-  };
-
-  const copyReferralLink = () => {
-    navigator.clipboard.writeText(referralLink());
-    setReferralCopied(true);
-    showToast('Invite link copied!');
-    setTimeout(() => setReferralCopied(false), 2000);
-  };
-
-  const shareReferralLink = async () => {
-    const link = referralLink();
-    const text = `Join me on TradR Pit — $${REFERRAL_TIERS.friendSignupBonus} signup bonus: ${link}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ text, title: 'TradR Pit Invite' });
-      } else {
-        await navigator.clipboard.writeText(link);
-        showToast('Invite link copied!');
-      }
-    } catch {
-      /* user cancelled share */
-    }
-  };
-
   useEffect(() => {
     fetch('/api/deposits/status')
       .then((r) => r.json())
@@ -378,13 +342,50 @@ export default function TradR() {
   const dismissSettlement = () => closeSettlement(true);
   const viewSettlementInDone = () => closeSettlement(true);
 
+  const isJoinableContest = (c: Contest) =>
+    (c.status === 'open' || c.status === 'active') && isJoinAllowed(c);
+
+  const dailyPitContest = findDailyPitContest(contests) ?? canonicalOpeningBell;
+  const dailyPitTraderCount = dailyPitContest ? getLiveParticipantCount(dailyPitContest.id) : 0;
+  const floorLivePitCount = arenaPitList.filter((p) => !p.scheduled).length;
+  const floorPrizePool = dailyPitContest
+    ? computeEffectivePool(DAILY_PIT_SLUG, {
+        entryFee: dailyPitContest.entryFee,
+        participantCount: dailyPitTraderCount,
+      })
+    : 0;
+  const floorPaidCount = dailyPitContest ? computeMaxPaidRank(DAILY_PIT_SLUG, dailyPitTraderCount) : 0;
+  const balanceShortForPit = isLoggedIn && effectiveBalance < DAILY_ENTRY_FEE;
+  const canJoinNextPit =
+    !!dailyPitContest &&
+    !joinedContests.includes(dailyPitContest.id) &&
+    isJoinableContest(dailyPitContest);
+
   const runItBack = async () => {
     const closedId = settlementResult?.contestId;
     closeSettlement(false);
+    const next =
+      dailyPitContest &&
+      dailyPitContest.id !== closedId &&
+      !joinedContests.includes(dailyPitContest.id) &&
+      isJoinableContest(dailyPitContest)
+        ? dailyPitContest
+        : findNextJoinablePit(contests, joinedContests, closedId);
+
+    if (!next) {
+      setActiveTab('home');
+      showToast('No pit open to join right now — check Arena soon');
+      return;
+    }
+
+    if (effectiveBalance < next.entryFee) {
+      setActiveTab('account');
+      showToast(`Add $${(next.entryFee - effectiveBalance).toFixed(2)} to your wallet to ring in`, 'error');
+      return;
+    }
+
     setActiveTab('home');
-    const next = findNextJoinablePit(contests, joinedContests, closedId);
-    if (next) await joinArena(next.id);
-    else showToast('No open arenas right now — fresh pits drop soon');
+    await joinArena(next.id);
   };
 
   const openContestRecap = async (contestId: number) => {
@@ -436,18 +437,6 @@ export default function TradR() {
     }
   };
 
-  const isJoinableContest = (c: Contest) =>
-    (c.status === 'open' || c.status === 'active') && isJoinAllowed(c);
-
-  const dailyPitContest = findDailyPitContest(contests) ?? canonicalOpeningBell;
-  const floorLivePitCount = arenaPitList.filter((p) => !p.scheduled).length;
-  const floorPrizePool = dailyPitContest
-    ? computeEffectivePool(DAILY_PIT_SLUG, {
-        entryFee: dailyPitContest.entryFee,
-        participantCount: getLiveParticipantCount(dailyPitContest.id),
-      })
-    : 0;
-
   const primaryActiveBattle = activeBattles.length
     ? [...activeBattles].sort((a, b) => getPortfolioValue(b) - getPortfolioValue(a))[0]
     : null;
@@ -463,10 +452,6 @@ export default function TradR() {
     if (firstScheduled) return firstScheduled.contest;
     return featuredContest;
   })();
-
-  const spotlightFill = spotlightContest
-    ? getPitFillStatus(spotlightContest, getLiveParticipantCount(spotlightContest.id))
-    : null;
 
   const bestActiveRank = activeBattles.length
     ? Math.min(...activeBattles.map((p) => rankInContest(p.contestId) ?? 9999))
@@ -625,7 +610,6 @@ export default function TradR() {
     !!dailyPitContest &&
     !joinedContests.includes(dailyPitContest.id) &&
     isJoinableContest(dailyPitContest);
-  const showProfileNavDot = !!(spotlightFill && !spotlightFill.isConfirmed);
   const battlesChromeStatus =
     battlesSegment === 'active' && activeBattles.length > 0
       ? `${activeBattles.length} pit${activeBattles.length === 1 ? '' : 's'} on the floor${displayBestActiveRank != null ? ` · best #${displayBestActiveRank}` : ''}`
@@ -704,18 +688,23 @@ export default function TradR() {
                 <>
                   <span className="pit-chrome-status-sep">·</span>
                   <span>
-                    {floorPrizePool > 0
-                      ? `$${floorPrizePool.toLocaleString()} pool`
-                      : 'Ring in to grow the pool'}
+                    {dailyPitTraderCount > 0
+                      ? `${dailyPitTraderCount} in · $${floorPrizePool.toLocaleString()} pool · top ${floorPaidCount || '—'} paid`
+                      : 'Be first to ring in'}
                   </span>
                 </>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="font-mono text-sm font-semibold tabular-nums text-[var(--text)]">
+            <button
+              type="button"
+              onClick={() => setActiveTab('account')}
+              className={`font-mono text-sm font-semibold tabular-nums ${balanceShortForPit ? 'pit-chrome-balance-low' : 'text-[var(--text)]'}`}
+              title={balanceShortForPit ? `Need $${DAILY_ENTRY_FEE} to join` : 'Wallet balance'}
+            >
               ${effectiveBalance.toFixed(2)}
-            </div>
+            </button>
             {!stripeEnabled && user && (
               <button
                 onClick={() => deposit(50)}
@@ -823,6 +812,10 @@ export default function TradR() {
             getContestBoard={getContestBoard}
             onViewLeaderboard={openLeaderboard}
             onShowHowItWorks={() => setShowHowItWorks(true)}
+            balance={effectiveBalance}
+            stripeEnabled={stripeEnabled}
+            onDeposit={() => deposit(10)}
+            isLoggedIn={isLoggedIn}
           />
         )}
 
@@ -913,11 +906,6 @@ export default function TradR() {
             effectiveBalance={effectiveBalance}
             effectiveStats={effectiveStats}
             profileExtrasLoading={profileExtrasLoading}
-            spotlightContest={spotlightContest}
-            spotlightFill={spotlightFill}
-            referralStats={referralStats}
-            referralLink={referralLink()}
-            referralCopied={referralCopied}
             activities={activities}
             history={history}
             onSaveUsername={saveUsernameFromProfile}
@@ -932,8 +920,6 @@ export default function TradR() {
             onPasswordChange={setPassword}
             profileSection={profileSection}
             onProfileSectionChange={setProfileSection}
-            onShareReferral={shareReferralLink}
-            onCopyReferral={copyReferralLink}
             onSeedDemo={usingServerGame ? seedDemoToAccount : undefined}
             onRefreshPrices={fetchLivePrices}
             onResetDemo={resetDemo}
@@ -954,12 +940,7 @@ export default function TradR() {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             const badge = tab.id === 'entries' && activeBattles.length > 0 ? activeBattles.length : null;
-            const navDot =
-              tab.id === 'home' && showArenaNavDot
-                ? 'tab-dot'
-                : tab.id === 'account' && showProfileNavDot
-                  ? 'tab-dot tab-pulse-dot'
-                  : null;
+            const navDot = tab.id === 'home' && showArenaNavDot ? 'tab-dot' : null;
             return (
               <button
                 key={tab.id}
@@ -1043,6 +1024,12 @@ export default function TradR() {
       {settlementResult && (
         <SettlementModal
           result={settlementResult}
+          nextPit={
+            dailyPitContest
+              ? { title: dailyPitContest.title, entryFee: dailyPitContest.entryFee }
+              : null
+          }
+          canJoinNextPit={canJoinNextPit}
           onReadTape={() => {
             const id = settlementResult.contestId;
             viewSettlementInDone();

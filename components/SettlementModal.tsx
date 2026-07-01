@@ -19,6 +19,8 @@ export type SettlementPayload = {
 
 type SettlementModalProps = {
   result: SettlementPayload;
+  nextPit?: { title: string; entryFee: number } | null;
+  canJoinNextPit?: boolean;
   onReadTape: () => void;
   onRunItBack: () => void;
   onShare: () => void;
@@ -28,12 +30,19 @@ type SettlementModalProps = {
 
 export default function SettlementModal({
   result,
+  nextPit,
+  canJoinNextPit = true,
   onReadTape,
   onRunItBack,
   onShare,
   onViewDone,
   onDismiss,
 }: SettlementModalProps) {
+  const runItBackLabel = nextPit
+    ? canJoinNextPit
+      ? `Ring in — $${nextPit.entryFee} · ${nextPit.title}`
+      : `Already in ${nextPit.title}`
+    : 'Back to Arena';
   const isWin = !result.voided && result.rank === 1;
   const isPodium = !result.voided && result.rank > 1 && result.rank <= 3;
 
@@ -88,9 +97,24 @@ export default function SettlementModal({
             </div>
           )}
 
+        {nextPit && canJoinNextPit && (
+          <p className="text-[11px] text-muted mb-4 leading-relaxed">
+            Today&apos;s pit is open — ring in again and run it back on the tape.
+          </p>
+        )}
+
         <div className="flex flex-col gap-2">
+          {nextPit && canJoinNextPit ? (
+            <button type="button" onClick={onRunItBack} className="btn btn-primary w-full py-3.5 text-sm">
+              {runItBackLabel}
+            </button>
+          ) : null}
           {!result.voided && (
-            <button type="button" onClick={onReadTape} className="btn btn-primary w-full py-3.5 text-sm">
+            <button
+              type="button"
+              onClick={onReadTape}
+              className={`w-full py-3.5 text-sm rounded-xl ${nextPit && canJoinNextPit ? 'border border-accent/40 text-accent' : 'btn btn-primary'}`}
+            >
               Read the tape
             </button>
           )}
@@ -101,13 +125,15 @@ export default function SettlementModal({
           >
             View in Done tab
           </button>
-          <button
-            type="button"
-            onClick={onRunItBack}
-            className={`w-full py-3.5 text-sm rounded-xl ${result.voided ? 'btn btn-primary' : 'border border-accent/40 text-accent'}`}
-          >
-            Run it back
-          </button>
+          {(!nextPit || !canJoinNextPit) && (
+            <button
+              type="button"
+              onClick={onRunItBack}
+              className={`w-full py-3.5 text-sm rounded-xl ${result.voided ? 'btn btn-primary' : 'border border-accent/40 text-accent'}`}
+            >
+              {runItBackLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={onShare}

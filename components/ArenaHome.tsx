@@ -20,6 +20,10 @@ type ArenaHomeProps = {
   getContestBoard?: (contestId: number) => LeaderboardEntry[];
   onViewLeaderboard?: (contestId: number) => void;
   onShowHowItWorks?: () => void;
+  balance?: number;
+  stripeEnabled?: boolean;
+  onDeposit?: () => void;
+  isLoggedIn?: boolean;
 };
 
 export default function ArenaHome({
@@ -36,6 +40,10 @@ export default function ArenaHome({
   getContestBoard,
   onViewLeaderboard,
   onShowHowItWorks,
+  balance = 0,
+  stripeEnabled,
+  onDeposit,
+  isLoggedIn = false,
 }: ArenaHomeProps) {
   return (
     <div className="af-landing af-landing-v3">
@@ -53,6 +61,10 @@ export default function ArenaHome({
         getContestBoard={getContestBoard}
         onViewLeaderboard={onViewLeaderboard}
         onShowHowItWorks={onShowHowItWorks}
+        balance={balance}
+        stripeEnabled={stripeEnabled}
+        onDeposit={onDeposit}
+        isLoggedIn={isLoggedIn}
       />
     </div>
   );

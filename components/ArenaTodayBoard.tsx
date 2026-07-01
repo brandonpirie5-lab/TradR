@@ -6,12 +6,15 @@ import { Info } from 'lucide-react';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
 import { formatFloorTraders } from '../lib/format-floor-count';
 import { pitActionLabel, PIT_DEFAULT_TAGLINE } from '../lib/pit-cta';
-import PitMoneyDisplay from './PitMoneyDisplay';
+import PitMoneyDisplay, { PitLivePoolStrip } from './PitMoneyDisplay';
+import PitFillBanner from './PitFillBanner';
+import LowBalanceNudge from './LowBalanceNudge';
 import { formatPitStartTime } from '../lib/pit-schedule';
 import { TimeLeftLabel } from './BellCountdown';
 import type { ArenaPitItem } from './ArenaHome';
 import ArenaTapeLeaders from './ArenaTapeLeaders';
 import { DAILY_ASSETS } from '../lib/daily-pit-config';
+import { getPitFillStatus } from '../lib/contest-fill';
 
 type ArenaTodayBoardProps = {
   pits: ArenaPitItem[];
@@ -27,6 +30,10 @@ type ArenaTodayBoardProps = {
   getContestBoard?: (contestId: number) => LeaderboardEntry[];
   onViewLeaderboard?: (contestId: number) => void;
   onShowHowItWorks?: () => void;
+  balance?: number;
+  stripeEnabled?: boolean;
+  onDeposit?: () => void;
+  isLoggedIn?: boolean;
 };
 
 export default function ArenaTodayBoard({
@@ -43,16 +50,40 @@ export default function ArenaTodayBoard({
   getContestBoard,
   onViewLeaderboard,
   onShowHowItWorks,
+  balance = 0,
+  stripeEnabled,
+  onDeposit,
+  isLoggedIn = false,
 }: ArenaTodayBoardProps) {
   const mainItem = pits.find((p) => !p.scheduled) ?? pits[0];
   const mainBoard =
     mainItem && getContestBoard ? getContestBoard(mainItem.contest.id) : [];
+  const mainJoined = mainItem ? joinedContestIds.includes(mainItem.contest.id) : false;
+  const mainCount = mainItem ? getParticipantCount(mainItem.contest.id) : 0;
+  const mainFill = mainItem ? getPitFillStatus(mainItem.contest, mainCount) : null;
 
   return (
     <div className="at-board at-board-v3">
-      <p className="at-value-hook">
-        $5 in · top half cash · pool grows with every trader
-      </p>
+      {mainItem && (
+        <PitLivePoolStrip
+          slug={mainItem.contest.slug}
+          entryFee={mainItem.contest.entryFee}
+          participantCount={mainCount}
+          className="mb-3"
+        />
+      )}
+
+      {isLoggedIn && mainItem && (
+        <LowBalanceNudge
+          balance={balance}
+          isJoined={mainJoined}
+          stripeEnabled={stripeEnabled}
+          onDeposit={onDeposit}
+          className="mb-3"
+        />
+      )}
+
+      {mainItem && mainFill && <PitFillBanner fill={mainFill} className="mb-3" />}
 
       {mainItem ? (
         <section className="at-main" data-tour="arena-hero">

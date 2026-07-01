@@ -1,8 +1,8 @@
 import { Contest } from './game-types';
 import { isContestTradingOpen, isJoinAllowed } from './contest-bell';
-import { OPENING_BELL_SLUG } from './pit-contests';
+import { DAILY_PIT_SLUG } from './daily-pit-config';
 
-/** Next open arena the user hasn't joined — prefer free pit, then same slug family. */
+/** Next open daily pit the user hasn't joined. */
 export function findNextOpenPit(
   contests: Contest[],
   joinedIds: number[],
@@ -17,18 +17,19 @@ export function findNextOpenPit(
       (c.status === 'open' || c.status === 'active') &&
       !joinedIds.includes(c.id) &&
       isJoinAllowed(c) &&
-      isContestTradingOpen(c)
+      isContestTradingOpen(c) &&
+      c.entryFee > 0
   );
 
   if (!candidates.length) return null;
+
+  const daily = candidates.find((c) => c.slug === DAILY_PIT_SLUG);
+  if (daily) return daily;
 
   if (closed?.slug) {
     const sameSlug = candidates.find((c) => c.slug === closed.slug);
     if (sameSlug) return sameSlug;
   }
-
-  const free = candidates.find((c) => c.slug === OPENING_BELL_SLUG || c.entryFee === 0);
-  if (free) return free;
 
   return candidates.sort((a, b) => a.entryFee - b.entryFee)[0];
 }
@@ -48,17 +49,20 @@ export function findNextJoinablePit(
       (c.status === 'open' || c.status === 'active') &&
       !joinedIds.includes(c.id) &&
       isJoinAllowed(c) &&
-      !isContestTradingOpen(c)
+      !isContestTradingOpen(c) &&
+      c.entryFee > 0
   );
   if (!scheduled.length) return null;
+
+  const daily = scheduled.find((c) => c.slug === DAILY_PIT_SLUG);
+  if (daily) return daily;
 
   if (closed?.slug) {
     const same = scheduled.find((c) => c.slug === closed.slug);
     if (same) return same;
   }
 
-  const free = scheduled.find((c) => c.slug === OPENING_BELL_SLUG || c.entryFee === 0);
-  return free ?? scheduled.sort((a, b) => {
+  return scheduled.sort((a, b) => {
     const aStart = a.startsAt ? new Date(a.startsAt).getTime() : 0;
     const bStart = b.startsAt ? new Date(b.startsAt).getTime() : 0;
     return aStart - bStart;
@@ -75,11 +79,13 @@ export function buildPitShareText(params: {
   startingValue?: number;
   appUrl?: string;
 }): string {
-  const url = params.appUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://tradr-green.vercel.app');
+  const url =
+    params.appUrl ||
+    (typeof window !== 'undefined' ? window.location.origin : 'https://tradr-green.vercel.app');
 
   if (params.voided) {
     const refundLine = params.refund ? ` +$${params.refund} refunded` : '';
-    return `TradR Pit — ${params.contestTitle} didn't fill${refundLine}. Ring in free: ${url}`;
+    return `TradR Pit — ${params.contestTitle} didn't fill${refundLine}. Join the next $5 pit: ${url}`;
   }
 
   const rank = params.rank ?? '—';
@@ -92,5 +98,5 @@ export function buildPitShareText(params: {
   }
 
   const prize = params.payout && params.payout > 0 ? ` · +$${params.payout} won` : '';
-  return `TradR Pit — #${rank} in ${params.contestTitle}${perf}${prize}\nRing in free today: ${url}`;
+  return `TradR Pit — #${rank} in ${params.contestTitle}${perf}${prize}\n$5 daily pit · top half cash: ${url}`;
 }

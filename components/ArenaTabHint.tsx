@@ -27,11 +27,11 @@ export default function ArenaTabHint({ suppressed = false }: { suppressed?: bool
   return (
     <div className="at-tab-hint">
       <p className="at-tab-hint-text">
-        <strong>Arena</strong> — pick a pit and ring in with one tap.
+        <strong>Arena</strong> — $5 in, top half cash. Pool grows with every trader.
         <br />
-        <strong>Battles</strong> — trade your ticket when the bell opens.
+        <strong>Battles</strong> — trade when the bell opens.
         <br />
-        <strong>Vault</strong> — see who&apos;s winning on the tape.
+        <strong>Vault</strong> — live leaderboard.
       </p>
       <button type="button" onClick={dismiss} className="at-tab-hint-dismiss" aria-label="Dismiss">
         <X size={14} />
