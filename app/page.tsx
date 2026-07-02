@@ -49,7 +49,7 @@ import { computeEffectivePool, computeMaxPaidRank, payoutForContestRankLive } fr
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import { findDailyPitContest } from '../lib/pit-contests';
 import { DAILY_ENTRY_FEE, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
-import { getCurrentDailyPitWindow, formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
+import { getCurrentDailyPitWindow } from '../lib/daily-pit-schedule';
 import { allowDevWalletTools } from '../lib/runtime-env';
 import { markSettlementSeen } from '../lib/settlement-storage';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
@@ -739,26 +739,15 @@ export default function TradR() {
               TRADR<span>PIT</span>
             </div>
             <div className="pit-chrome-status">
-              {isLoggedIn ? (
+              <span
+                className={`pit-chrome-phase pit-chrome-phase-${pitPhase === 'live' ? 'live' : pitPhase === 'between' ? 'closed' : 'open'}`}
+              >
+                {pitPhase === 'live' ? 'Live' : pitPhase === 'between' ? 'Between bells' : 'Ring-in open'}
+              </span>
+              {isLoggedIn && dailyPitContest && dailyPitTraderCount > 0 && (
                 <>
-                  {floorLivePitCount > 0 && <span className="pit-chrome-orb" aria-hidden />}
-                  <span>Daily Pit</span>
-                  {dailyPitContest && (
-                    <>
-                      <span className="pit-chrome-status-sep">·</span>
-                      <span>
-                        {dailyPitTraderCount > 0
-                          ? `${dailyPitTraderCount} in · $${floorPrizePool.toLocaleString()} pool · top ${floorPaidCount || '—'} paid`
-                          : 'Be first to ring in'}
-                      </span>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span>$5 in · top half cash</span>
                   <span className="pit-chrome-status-sep">·</span>
-                  <span>{formatDailyPitScheduleLabel()}</span>
+                  <span className="pit-chrome-pool">${floorPrizePool.toLocaleString()} pool</span>
                 </>
               )}
             </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
-import { getCurrentDailyPitWindow, formatDailyPitScheduleLabel, msUntilDailyPitOpen } from '../lib/daily-pit-schedule';
+import { formatDailyPitScheduleLabel, msUntilDailyPitOpen } from '../lib/daily-pit-schedule';
 import { formatBellCountdown } from '../lib/contest-bell';
 import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
 import type { ArenaPitItem } from './ArenaHome';
@@ -44,7 +44,6 @@ export default function ArenaTodayBoard({
   getPitLiveStats,
   getContestBoard,
   onViewLeaderboard,
-  onShowHowItWorks,
   balance = 0,
   stripeEnabled,
   onDeposit,
@@ -69,32 +68,34 @@ export default function ArenaTodayBoard({
     const openMs = msUntilDailyPitOpen();
     return (
       <div className="at-board at-board-v3">
-        <div className="dp-poster dp-poster-empty">
-          <h1 className="dp-poster-title">$5 in · top half cash</h1>
-          <p className="dp-poster-sub">{formatDailyPitScheduleLabel()}</p>
-          {hydrated && openMs > 0 && (
-            <p className="dp-poster-empty-countdown">
-              Next pit in <strong>{formatBellCountdown(openMs)}</strong>
-            </p>
-          )}
-          <div className="dp-poster-actions">
-            {!isLoggedIn && onWatchTape && (
-              <button type="button" className="dp-poster-cta-secondary" onClick={onWatchTape}>
-                Watch live
-              </button>
-            )}
-            {!isLoggedIn && onSignIn && (
-              <button type="button" className="at-cta dp-poster-cta-primary" onClick={onSignIn}>
-                Sign in · ring in ${DAILY_ENTRY_FEE}
-              </button>
-            )}
+        <section className="pit-floor pit-floor-idle">
+          <div className="pit-floor-ribbon pit-floor-ribbon-closed">
+            <span className="pit-floor-ribbon-label">PIT LOADING</span>
+            <span className="pit-floor-ribbon-meta">Stand by</span>
           </div>
-          {onShowHowItWorks && (
-            <button type="button" className="dp-poster-how" onClick={onShowHowItWorks}>
-              How it works
-            </button>
-          )}
-        </div>
+          <div className="pit-floor-stage">
+            <p className="pit-floor-kicker">The daily day-trading pit</p>
+            <h1 className="pit-floor-idle-title">$5 in · top half cash</h1>
+            <p className="pit-floor-hook">{formatDailyPitScheduleLabel()}</p>
+            {hydrated && openMs > 0 && (
+              <p className="pit-floor-idle-countdown">
+                Next bell <strong>{formatBellCountdown(openMs)}</strong>
+              </p>
+            )}
+            <div className="pit-floor-actions">
+              {!isLoggedIn && onSignIn && (
+                <button type="button" className="pit-floor-cta" onClick={onSignIn}>
+                  Sign in · ring in ${DAILY_ENTRY_FEE}
+                </button>
+              )}
+              {!isLoggedIn && onWatchTape && (
+                <button type="button" className="pit-floor-cta-ghost" onClick={onWatchTape}>
+                  Watch the tape live
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
@@ -126,7 +127,6 @@ export default function ArenaTodayBoard({
         }
         isLoggedIn={isLoggedIn}
         onWatchTape={!isLoggedIn ? onWatchTape : undefined}
-        onShowHowItWorks={onShowHowItWorks}
       />
     </div>
   );

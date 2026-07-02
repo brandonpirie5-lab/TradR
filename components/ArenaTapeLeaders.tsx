@@ -9,10 +9,11 @@ type ArenaTapeLeadersProps = {
   contest: Contest;
   entries: LeaderboardEntry[];
   onViewAll: () => void;
+  bare?: boolean;
 };
 
-export default function ArenaTapeLeaders({ contest, entries, onViewAll }: ArenaTapeLeadersProps) {
-  if (entries.length < 2) return null;
+export default function ArenaTapeLeaders({ contest, entries, onViewAll, bare = false }: ArenaTapeLeadersProps) {
+  if (entries.length < 1) return null;
 
   const cutRank = getPaidRankCount(contest.slug);
   const top = entries.slice(0, 3);
@@ -20,18 +21,20 @@ export default function ArenaTapeLeaders({ contest, entries, onViewAll }: ArenaT
   const showYou = you && !top.some((e) => e.isYou);
 
   return (
-    <section className="arena-tape-leaders mb-5" data-tour="tape-leaders">
-      <div className="flex items-center justify-between mb-2.5">
-        <div className="text-[10px] font-semibold tracking-[0.2em] text-muted uppercase">Tape leaders</div>
-        <button
-          type="button"
-          onClick={onViewAll}
-          className="flex items-center gap-0.5 text-[10px] font-medium text-accent"
-        >
-          Full board
-          <ChevronRight size={12} />
-        </button>
-      </div>
+    <section className={`arena-tape-leaders ${bare ? 'arena-tape-leaders-bare' : 'mb-5'}`} data-tour="tape-leaders">
+      {!bare && (
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="text-[10px] font-semibold tracking-[0.2em] text-muted uppercase">Tape leaders</div>
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="flex items-center gap-0.5 text-[10px] font-medium text-accent"
+          >
+            Full board
+            <ChevronRight size={12} />
+          </button>
+        </div>
+      )}
 
       <div className="arena-tape-leaders-panel rounded-xl border border-card overflow-hidden">
         {top.map((entry, i) => {
