@@ -8,10 +8,9 @@ export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const cronOk = cronSecret && authHeader === `Bearer ${cronSecret}`;
 
-  // Logged-in users can trigger idempotent auto-settle (keeps pits closing on time)
   const user = await getUserFromRequest(request);
   if (!cronOk && !user) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    /* Guests may trigger idempotent pit cycle — keeps bells closing without a logged-in client */
   }
 
   const admin = getSupabaseAdmin();

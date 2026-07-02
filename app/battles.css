@@ -42,8 +42,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.45);
+  background: var(--pit-gold-light);
+  box-shadow: 0 0 8px var(--pit-gold-glow);
   flex-shrink: 0;
 }
 
@@ -1175,4 +1175,24 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+/* Pit gold theme — matches Arena */
+.bt-shell .segmented-control button[data-active='true'],
+.bt-shell [aria-selected='true'] {
+  color: var(--pit-gold-light);
+}
+
+.bt-arena-link {
+  border-color: var(--pit-gold-border);
+  background: rgba(201, 162, 39, 0.06);
+}
+
+.bt-done-fresh-banner {
+  border-color: var(--pit-gold-border);
+  background: rgba(201, 162, 39, 0.06);
+}
+
+.bt-done-fresh-kicker {
+  color: var(--pit-gold-light);
 }

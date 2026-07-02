@@ -80,18 +80,6 @@ export default function BattlesTab({
 }: BattlesTabProps) {
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
-  if (!isLoggedIn && onSignIn && onWatchTape) {
-    return (
-      <div className="bt-shell tab-content-enter">
-        <BattlesGuestGate
-          onSignIn={onSignIn}
-          onWatchTape={onWatchTape}
-          onRingIn={onSignIn}
-        />
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (battlesSegment !== 'completed' || highlightDoneContestId == null) return;
     const el = highlightRef.current;
@@ -105,6 +93,18 @@ export default function BattlesTab({
       window.clearTimeout(clear);
     };
   }, [battlesSegment, highlightDoneContestId, onClearDoneHighlight]);
+
+  if (!isLoggedIn && onSignIn && onWatchTape) {
+    return (
+      <div className="bt-shell tab-content-enter">
+        <BattlesGuestGate
+          onSignIn={onSignIn}
+          onWatchTape={onWatchTape}
+          onRingIn={onSignIn}
+        />
+      </div>
+    );
+  }
 
   const highlightedBattle = highlightDoneContestId
     ? sortedCompletedBattles.find((p) => p.contestId === highlightDoneContestId)

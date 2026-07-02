@@ -48,7 +48,7 @@ import { buildPitMoment, type PitMoment } from '../lib/pit-moments';
 import { computeEffectivePool, computeMaxPaidRank, payoutForContestRankLive } from '../lib/pit-pool-math';
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import { findDailyPitContest } from '../lib/pit-contests';
-import { DAILY_ENTRY_FEE, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
 import { getCurrentDailyPitWindow } from '../lib/daily-pit-schedule';
 import { allowDevWalletTools } from '../lib/runtime-env';
 import { markSettlementSeen } from '../lib/settlement-storage';
@@ -390,7 +390,7 @@ export default function TradR() {
   const floorPrizePool = dailyPitContest
     ? computeEffectivePool(DAILY_PIT_SLUG, {
         entryFee: dailyPitContest.entryFee,
-        participantCount: dailyPitTraderCount,
+        participantCount: Math.max(dailyPitTraderCount, DAILY_MIN_ENTRIES),
       })
     : 0;
   const floorPaidCount = dailyPitContest ? computeMaxPaidRank(DAILY_PIT_SLUG, dailyPitTraderCount) : 0;
@@ -744,10 +744,19 @@ export default function TradR() {
               >
                 {pitPhase === 'live' ? 'Live' : pitPhase === 'between' ? 'Between bells' : 'Ring-in open'}
               </span>
-              {isLoggedIn && dailyPitContest && dailyPitTraderCount > 0 && (
+              {dailyPitContest && (
                 <>
                   <span className="pit-chrome-status-sep">·</span>
-                  <span className="pit-chrome-pool">${floorPrizePool.toLocaleString()} pool</span>
+                  <span className="pit-chrome-pool">
+                    ${floorPrizePool.toLocaleString()} pool
+                    {dailyPitTraderCount === 0 && ' at fill'}
+                  </span>
+                  {dailyPitTraderCount > 0 && (
+                    <>
+                      <span className="pit-chrome-status-sep">·</span>
+                      <span>{dailyPitTraderCount} in</span>
+                    </>
+                  )}
                 </>
               )}
             </div>

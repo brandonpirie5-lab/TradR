@@ -9,6 +9,10 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const provided = authHeader?.replace('Bearer ', '');
 
+  if (process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production' && !cronSecret) {
+    return Response.json({ error: 'CRON_SECRET not configured' }, { status: 503 });
+  }
+
   if (cronSecret && provided !== cronSecret) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }

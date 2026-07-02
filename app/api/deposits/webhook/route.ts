@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   const session = event.data.object;
+  const sessionId = session.id as string;
   const userId = session.metadata?.user_id;
   const amountUsd = Number(session.metadata?.amount_usd || 0);
 
@@ -55,6 +56,19 @@ export async function POST(request: NextRequest) {
   const admin = getSupabaseAdmin();
   if (!admin) {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  const { data: prior } = await admin
+    .from('transactions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('type', 'deposit')
+    .ilike('description', `%session ${sessionId}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (prior) {
+    return Response.json({ received: true, duplicate: true });
   }
 
   const { data: profile } = await admin.from('profiles').select('balance').eq('id', userId).single();

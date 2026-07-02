@@ -14,14 +14,14 @@
   height: 72px;
   margin: 0 auto 12px;
   border-radius: 999px;
-  background: var(--accent);
-  color: #0a0a0a;
+  background: linear-gradient(165deg, var(--pit-gold-pale) 0%, var(--pit-gold) 100%);
+  color: var(--pit-void);
   font-size: 26px;
   font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.15);
+  box-shadow: 0 0 0 4px var(--pit-gold-glow);
 }
 
 .pt-name {

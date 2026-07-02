@@ -354,5 +354,11 @@ export async function triggerAutoSettle(): Promise<{
     yourAffected?: boolean;
   }>;
 }> {
-  return authFetch('/api/contests/auto-settle', { method: 'POST' });
+  const token = await getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch('/api/contests/auto-settle', { method: 'POST', headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
 }

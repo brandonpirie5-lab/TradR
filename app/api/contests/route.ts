@@ -4,6 +4,8 @@ import { DbContest } from '@/lib/game-types';
 import { schedulePitCycle } from '@/lib/pit-cycle-lock';
 import { ensureDailyPitContest } from '@/lib/ensure-daily-pit';
 import { ensurePitLiquidity } from '@/lib/ensure-pit-liquidity';
+import { activateScheduledContests } from '@/lib/activate-contests';
+import { settleExpiredContests } from '@/lib/settle-contest';
 
 export async function GET() {
   const admin = getSupabaseAdmin();
@@ -14,14 +16,23 @@ export async function GET() {
   let pitId: number | null = null;
   try {
     pitId = await ensureDailyPitContest(admin);
+    try {
+      await activateScheduledContests(admin);
+      await settleExpiredContests(admin);
+    } catch (e) {
+      console.warn('inline pit settle', e);
+    }
     if (pitId) {
-      ensurePitLiquidity(admin, pitId).catch((e) => console.warn('ensurePitLiquidity', e));
+      try {
+        await ensurePitLiquidity(admin, pitId);
+      } catch (e) {
+        console.warn('ensurePitLiquidity', e);
+      }
     }
   } catch (e) {
     console.warn('ensureDailyPitContest', e);
   }
 
-  // Don't block the contest list — cycle can take 30s+ with settle + week spawn.
   schedulePitCycle(admin);
 
   const nowIso = new Date().toISOString();
@@ -36,17 +47,22 @@ export async function GET() {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: counts, error: countError } = await admin
-    .from('participations')
-    .select('contest_id');
+  const contestIds = (contests || []).map((c) => c.id);
+  let entryCounts: Record<number, number> = {};
 
-  if (countError) {
-    return Response.json({ error: countError.message }, { status: 500 });
-  }
+  if (contestIds.length > 0) {
+    const { data: counts, error: countError } = await admin
+      .from('participations')
+      .select('contest_id')
+      .in('contest_id', contestIds);
 
-  const entryCounts: Record<number, number> = {};
-  for (const row of counts || []) {
-    entryCounts[row.contest_id] = (entryCounts[row.contest_id] || 0) + 1;
+    if (countError) {
+      return Response.json({ error: countError.message }, { status: 500 });
+    }
+
+    for (const row of counts || []) {
+      entryCounts[row.contest_id] = (entryCounts[row.contest_id] || 0) + 1;
+    }
   }
 
   const deduped = dedupeContestRows(contests || [], new Date(), entryCounts);

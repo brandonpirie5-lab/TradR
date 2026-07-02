@@ -1285,14 +1285,14 @@ export function useGameState({
     }, 5000);
     const interval = setInterval(() => {
       void runAutoSettle();
-    }, 180000);
+    }, 120000);
 
     return () => {
       cancelled = true;
       clearTimeout(bootTimer);
       clearInterval(interval);
     };
-  }, [usingServerGame, user?.id]);
+  }, [usingServerGame]);
 
   useEffect(() => {
     if (usingServerGame) return;

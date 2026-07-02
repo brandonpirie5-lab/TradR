@@ -106,6 +106,28 @@ async function findUserIdByEmail(admin: SupabaseClient, email: string): Promise<
   return null;
 }
 
+export async function ensureBotProfile(
+  admin: SupabaseClient,
+  userId: string,
+  username: string
+): Promise<void> {
+  const clean = username.replace(/^@/, '');
+  const { data: row } = await admin.from('profiles').select('id').eq('id', userId).maybeSingle();
+  if (!row) {
+    const { error } = await admin.from('profiles').insert({
+      id: userId,
+      username: clean,
+      balance: PIT_BOT_SEED_BALANCE,
+    });
+    if (error) throw new Error(`Bot profile insert failed: ${error.message}`);
+    return;
+  }
+  await admin
+    .from('profiles')
+    .update({ username: clean, balance: PIT_BOT_SEED_BALANCE })
+    .eq('id', userId);
+}
+
 export async function ensureBotUser(
   admin: SupabaseClient,
   email: string,
@@ -165,11 +187,7 @@ export async function seedBotsIntoContest(
 
     try {
       const userId = await ensureBotUser(admin, trader.email, trader.username);
-
-      await admin
-        .from('profiles')
-        .update({ username: trader.username.replace(/^@/, ''), balance: PIT_BOT_SEED_BALANCE })
-        .eq('id', userId);
+      await ensureBotProfile(admin, userId, trader.username);
 
       const { data: existingPart } = await admin
         .from('participations')

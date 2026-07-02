@@ -18,8 +18,10 @@
   border-radius: 16px;
   padding: 14px 16px;
   margin-bottom: 14px;
-  border: 1px solid rgba(234, 179, 8, 0.22);
-  background: linear-gradient(160deg, rgba(234, 179, 8, 0.06) 0%, rgba(10, 10, 10, 0.94) 45%);
+  border: 1px solid var(--pit-gold-border);
+  border-top: 2px solid rgba(242, 219, 122, 0.35);
+  background: linear-gradient(160deg, var(--pit-gold-glow) 0%, var(--pit-carbon) 48%);
+  box-shadow: inset 0 1px 0 rgba(242, 219, 122, 0.05);
 }
 
 .vt-pit-hero-top {
@@ -54,17 +56,17 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.08);
-  border: 1px solid rgba(74, 222, 128, 0.22);
+  color: var(--pit-gold-pale);
+  background: rgba(201, 162, 39, 0.1);
+  border: 1px solid var(--pit-gold-border);
 }
 
 .vt-pit-live-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+  background: var(--pit-gold-light);
+  box-shadow: 0 0 6px var(--pit-gold-glow);
 }
 
 .vt-pit-picker {
@@ -85,9 +87,14 @@
 }
 
 .vt-pit-pill-on {
-  border-color: rgba(234, 179, 8, 0.35);
-  color: var(--accent);
-  background: rgba(234, 179, 8, 0.08);
+  border-color: var(--pit-gold-border);
+  color: var(--pit-gold-light);
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.vt-pit-hero .pit-bell-clock {
+  margin-top: 10px;
+  margin-bottom: 0;
 }
 
 .vt-feed-wrap {

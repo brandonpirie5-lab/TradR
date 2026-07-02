@@ -1,14 +1,16 @@
 'use client';
 
 import React from 'react';
-import { BellCountdown } from './BellCountdown';
+import PitBellClock from './PitBellClock';
+import { getCurrentDailyPitWindow } from '../lib/daily-pit-schedule';
+import { isContestStarted } from '../lib/contest-bell';
 import PitFeed, { type PitFeedItem } from './PitFeed';
 import PitLeaderboardPanel from './PitLeaderboardPanel';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
 import { isContestTradingOpen } from '../lib/contest-bell';
 import { formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
 import { computeEffectivePool } from '../lib/pit-pool-math';
-import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES } from '../lib/daily-pit-config';
 
 type VaultTabProps = {
   vaultContest: Contest | null | undefined;
@@ -38,7 +40,7 @@ export default function VaultTab({
   vaultPlayerCount,
   bestPortfolioValue,
   bellTick,
-  hydrated,
+  hydrated: _hydrated,
   pitFeedItems,
   pitFeedLoading,
   isSpectating = false,
@@ -52,13 +54,14 @@ export default function VaultTab({
     return c && c.status !== 'closed';
   });
   const isLive = vaultContest && isContestTradingOpen(vaultContest);
-  const pool =
-    vaultContest && vaultPlayerCount > 0
-      ? computeEffectivePool(vaultContest.slug, {
-          entryFee: vaultContest.entryFee || DAILY_ENTRY_FEE,
-          participantCount: vaultPlayerCount,
-        })
-      : 0;
+  const pool = vaultContest
+    ? computeEffectivePool(vaultContest.slug, {
+        entryFee: vaultContest.entryFee || DAILY_ENTRY_FEE,
+        participantCount: Math.max(vaultPlayerCount, DAILY_MIN_ENTRIES),
+      })
+    : 0;
+  const phase = getCurrentDailyPitWindow().phase;
+  const vaultScheduled = vaultContest ? !isContestStarted(vaultContest) : false;
 
   if (!vaultContest) {
     return (
@@ -83,14 +86,8 @@ export default function VaultTab({
             <p className="vt-spectate-kicker">{isSpectating ? 'Spectator deck' : 'Your pit'}</p>
             <h2 className="vt-pit-hero-name">{vaultContest.title}</h2>
             <p className="vt-pit-hero-meta">
-              {vaultPlayerCount} traders
-              {pool > 0 && <> · ${pool.toLocaleString()} pool</>}
-              {hydrated && vaultContest.endsAt && (
-                <>
-                  {' '}
-                  · <BellCountdown contest={vaultContest} tick={bellTick} />
-                </>
-              )}
+              {vaultPlayerCount > 0 ? `${vaultPlayerCount} traders` : 'Floor filling'}
+              {' · '}${pool.toLocaleString()} pool{vaultPlayerCount < DAILY_MIN_ENTRIES ? ' at fill' : ''}
             </p>
           </div>
           {isLive && (
@@ -100,6 +97,15 @@ export default function VaultTab({
             </span>
           )}
         </div>
+        {vaultContest && (
+          <PitBellClock
+            contest={vaultContest}
+            scheduled={vaultScheduled}
+            phase={phase}
+            tick={bellTick}
+            urgent={!!isLive}
+          />
+        )}
       </div>
 
       {isSpectating && onJoinPit && (
