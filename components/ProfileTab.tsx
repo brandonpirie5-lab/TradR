@@ -7,6 +7,7 @@ import { ActivityItem, UserPerformanceStats, formatMemberSince } from '../lib/ga
 import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
 import { allowDevWalletTools, walletFundingCopy } from '../lib/runtime-env';
 import LegalFooter from './LegalFooter';
+import ReferralCard from './ReferralCard';
 
 type ProfileTabProps = {
   authLoading: boolean;
@@ -32,6 +33,7 @@ type ProfileTabProps = {
   password: string;
   onEmailChange: (v: string) => void;
   onPasswordChange: (v: string) => void;
+  onNotify?: (msg: string) => void;
   profileSection: 'overview' | 'activity';
   onProfileSectionChange: (s: 'overview' | 'activity') => void;
   onSeedDemo?: () => void;
@@ -65,6 +67,7 @@ export default function ProfileTab({
   password,
   onEmailChange,
   onPasswordChange,
+  onNotify,
   profileSection,
   onProfileSectionChange,
   onSeedDemo,
@@ -76,6 +79,8 @@ export default function ProfileTab({
   const [usernameInput, setUsernameInput] = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const needsFunds = effectiveBalance < DAILY_ENTRY_FEE;
   const devWallet = showDevTools && allowDevWalletTools(stripeEnabled);
 
@@ -128,6 +133,46 @@ export default function ProfileTab({
             <button onClick={onToggleSignup} className="text-xs w-full text-muted">
               {isSigningUp ? 'Have an account? Sign in' : 'New here? Create account'}
             </button>
+            {!isSigningUp && (
+              <button
+                type="button"
+                onClick={() => setForgotMode((v) => !v)}
+                className="text-xs w-full text-muted underline underline-offset-2"
+              >
+                Forgot password?
+              </button>
+            )}
+            {forgotMode && (
+              <div className="pt-forgot-panel">
+                <p className="text-xs text-secondary mb-2">We&apos;ll email a reset link.</p>
+                <button
+                  type="button"
+                  disabled={forgotLoading || !email}
+                  className="w-full py-2.5 border border-card rounded-xl text-sm font-semibold disabled:opacity-50"
+                  onClick={async () => {
+                    if (!email) return;
+                    setForgotLoading(true);
+                    try {
+                      const res = await fetch('/api/auth/forgot-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Failed');
+                      onNotify?.('Reset link sent — check your email');
+                      setForgotMode(false);
+                    } catch (e) {
+                      onNotify?.(e instanceof Error ? e.message : 'Could not send reset email');
+                    } finally {
+                      setForgotLoading(false);
+                    }
+                  }}
+                >
+                  {forgotLoading ? 'Sending…' : 'Send reset link'}
+                </button>
+              </div>
+            )}
           </div>
           <p className="pt-wallet-note">Cloud sync — balance and positions persist across devices.</p>
         </div>
@@ -256,6 +301,8 @@ export default function ProfileTab({
           {profileExtrasLoading && !effectiveStats && (
             <p className="text-center text-xs text-muted mt-3">Loading stats…</p>
           )}
+
+          {usingServerGame && <ReferralCard onToast={onNotify} />}
         </>
       )}
 

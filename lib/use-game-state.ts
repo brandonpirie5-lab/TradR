@@ -29,7 +29,8 @@ import {
 import { getContestRules } from './contest-rules';
 import { payoutForContestRankLive } from './pit-pool-math';
 import { loadSeenSettlementIds, markSettlementSeen } from './settlement-storage';
-import { recordDailyPitPlay } from './daily-streak';
+import { recordOpeningBellDay } from './opening-bell-streak';
+import { syncOpeningBellStreak } from './game-api';
 import {
   isContestBellOpen,
   isContestStarted,
@@ -470,9 +471,18 @@ export function useGameState({
           const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
           onJoinFlash(contest.title);
-          const streak = recordDailyPitPlay();
-          if (streak.extended && streak.count >= 3) {
-            showToast(`${streak.count}-day pit streak 🔥`);
+          try {
+            const remote = await syncOpeningBellStreak();
+            if (remote.creditsAwarded?.length) {
+              for (const c of remote.creditsAwarded) {
+                showToast(`Streak bonus — +$${c.amount} (${c.label})`);
+              }
+            } else if (remote.streak >= 3) {
+              showToast(`${remote.streak}-day tape streak 🔥`);
+            }
+          } catch {
+            const streak = recordOpeningBellDay();
+            if (streak.streak >= 3) showToast(`${streak.streak}-day tape streak 🔥`);
           }
           const fresh = contests.find((c) => c.id === contestId) ?? contest;
           if (contest.assets?.length) await fetchLivePrices(contest.assets);
@@ -515,10 +525,8 @@ export function useGameState({
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
       onJoinFlash(contest.title);
-      const streak = recordDailyPitPlay();
-      if (streak.extended && streak.count >= 3) {
-        showToast(`${streak.count}-day pit streak 🔥`);
-      }
+      const streak = recordOpeningBellDay();
+      if (streak.streak >= 3) showToast(`${streak.streak}-day tape streak 🔥`);
       if (contest.assets?.length) await fetchLivePrices(contest.assets);
       onRouteAfterJoin(contest);
       if (isContestTradingOpen(contest)) {

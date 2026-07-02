@@ -1,9 +1,11 @@
-const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+import { getAppUrl } from './app-url';
 
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
+
+/** Live when secret is set. Also needs STRIPE_WEBHOOK_SECRET on Vercel + Stripe dashboard webhook. */
 export const isStripeConfigured = !!STRIPE_SECRET;
 
-export const DEPOSIT_AMOUNTS = [25, 50, 100] as const;
+export const DEPOSIT_AMOUNTS = [10, 25, 50] as const;
 
 export async function createCheckoutSession(params: {
   userId: string;
@@ -15,8 +17,8 @@ export async function createCheckoutSession(params: {
   const amountCents = Math.round(params.amountUsd * 100);
   const body = new URLSearchParams({
     mode: 'payment',
-    success_url: `${APP_URL}/?deposit=success&amount=${params.amountUsd}`,
-    cancel_url: `${APP_URL}/?deposit=cancelled`,
+    success_url: `${getAppUrl()}/?deposit=success&amount=${params.amountUsd}`,
+    cancel_url: `${getAppUrl()}/?deposit=cancelled`,
     'line_items[0][price_data][currency]': 'usd',
     'line_items[0][price_data][unit_amount]': String(amountCents),
     'line_items[0][price_data][product_data][name]': `TradR Pit Wallet — $${params.amountUsd}`,

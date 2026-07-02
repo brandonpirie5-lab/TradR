@@ -11,7 +11,8 @@ import { pitActionLabel } from '../lib/pit-cta';
 import { isContestTradingOpen } from '../lib/contest-bell';
 import ArenaCountdownRing from './ArenaCountdownRing';
 import PitFillBanner from './PitFillBanner';
-import DailyStreakBadge from './DailyStreakBadge';
+import OpeningBellStreakBadge from './OpeningBellStreakBadge';
+import TomorrowPitBanner from './TomorrowPitBanner';
 import ArenaTapeLeaders from './ArenaTapeLeaders';
 import type { ArenaPitItem } from './ArenaHome';
 
@@ -26,6 +27,7 @@ type DailyPitEventHeroProps = {
   onInfo: () => void;
   onEnter: () => void;
   onViewLeaderboard?: () => void;
+  isLoggedIn?: boolean;
 };
 
 export default function DailyPitEventHero({
@@ -39,6 +41,7 @@ export default function DailyPitEventHero({
   onInfo,
   onEnter,
   onViewLeaderboard,
+  isLoggedIn = false,
 }: DailyPitEventHeroProps) {
   const { contest, scheduled } = item;
   const phase = getCurrentDailyPitWindow().phase;
@@ -67,7 +70,7 @@ export default function DailyPitEventHero({
       <div className="dp-event-top">
         <div>
           <p className="dp-event-kicker">Today&apos;s only pit</p>
-          <DailyStreakBadge className="mt-2" />
+          <OpeningBellStreakBadge useServer={isLoggedIn} className="mt-2" />
         </div>
         <button type="button" onClick={onInfo} className="at-info-btn" aria-label="Contest info">
           <Info size={14} />
@@ -123,6 +126,15 @@ export default function DailyPitEventHero({
       </div>
 
       <PitFillBanner fill={fill} className="mt-3" />
+
+      {phase === 'between' && (
+        <TomorrowPitBanner
+          isJoined={isJoined}
+          participantCount={participantCount}
+          hydrated={hydrated}
+          onRingIn={!isJoined ? onEnter : undefined}
+        />
+      )}
 
       {(scheduled || phase === 'pre_open') && (
         <div className="dp-early-ring">

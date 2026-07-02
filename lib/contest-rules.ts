@@ -1,5 +1,5 @@
 import { Contest } from './game-types';
-import { DAILY_DURATION_HOURS } from './daily-pit-config';
+import { DAILY_DURATION_HOURS, DAILY_MAX_TRADES } from './daily-pit-config';
 import {
   countPaidRanks,
   getPayoutStructure,
@@ -146,10 +146,11 @@ type SlugOverride = Partial<ContestRules> & {
 
 const SLUG_OVERRIDES: Partial<Record<string, SlugOverride>> = {
   'daily-pit': {
+    maxTrades: DAILY_MAX_TRADES,
     durationHours: DAILY_DURATION_HOURS,
     sectionPatches: {
       Trading: [
-        'Unlimited trades on SPY, QQQ, NVDA, BTC, ETH.',
+        `${DAILY_MAX_TRADES} trades max on SPY, QQQ, NVDA, BTC, ETH.`,
         'Quotes follow live market data; stale or slipped fills may be rejected.',
         'Long only — no margin or shorts.',
       ],

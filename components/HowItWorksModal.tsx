@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES, DAILY_MAX_ENTRIES } from '../lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES, DAILY_MAX_ENTRIES, DAILY_MAX_TRADES } from '../lib/daily-pit-config';
 import { PLATFORM_RAKE_PCT } from '../lib/pit-pool-math';
 import { formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
 import LegalFooter from './LegalFooter';
@@ -10,7 +10,7 @@ import LegalFooter from './LegalFooter';
 const SECTIONS = [
   {
     title: 'What is TradR Pit?',
-    body: `One paid pit every day (${formatDailyPitScheduleLabel()}). Ring in for $${DAILY_ENTRY_FEE}, trade a virtual $100,000 portfolio at live prices on SPY, QQQ, NVDA, BTC, and ETH, and climb the leaderboard. Top half of the field split the prize pool.`,
+    body: `One paid pit every day (${formatDailyPitScheduleLabel()}). Ring in for $${DAILY_ENTRY_FEE}, trade a virtual $100,000 portfolio at live prices on SPY, QQQ, NVDA, BTC, and ETH (${DAILY_MAX_TRADES} trades max). Top half of the field split the prize pool.`,
   },
   {
     title: 'Can I ring in early?',

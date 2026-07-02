@@ -49,11 +49,16 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>Contact</h2>
+          <h2>Retention</h2>
           <p>
-            Questions: support@tradr.app (placeholder). A full privacy policy will be published
-            before paid public launch.
+            Account and contest data are kept while your account is active. You may request deletion
+            by emailing support@tradr.app.
           </p>
+        </section>
+
+        <section>
+          <h2>Contact</h2>
+          <p>Questions or data requests: support@tradr.app</p>
         </section>
       </div>
     </main>

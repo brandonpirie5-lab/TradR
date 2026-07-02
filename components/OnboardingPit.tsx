@@ -30,7 +30,7 @@ export default function OnboardingPit({
     {
       icon: Trophy,
       title: 'Welcome to TradR Pit',
-      body: `$${DAILY_ENTRY_FEE} to enter today's pit. Trade a $100K virtual portfolio — top half split the prize pool.`,
+      body: `$${DAILY_ENTRY_FEE} to enter today's pit. Ring in early before 9:30 AM to lock your spot. Trade a $100K virtual portfolio — top half split the prize pool.`,
     },
     {
       icon: User,

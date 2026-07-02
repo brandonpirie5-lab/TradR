@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getAppUrl } from '@/lib/app-url';
 import "./globals.css";
 import "./arena-landing.css";
 import "./battles.css";
@@ -18,12 +19,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://tradr-green.vercel.app');
-
 export const metadata: Metadata = {
-  metadataBase: new URL(APP_URL),
+  metadataBase: new URL(getAppUrl()),
   title: "TradR Pit — $5 Daily Trading Contest",
   description:
     "One pit every day. $5 in, trade SPY · QQQ · NVDA · BTC · ETH, top half split the pool. 9:30 AM – 4 PM ET.",
@@ -46,7 +43,8 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [{ url: '/icon', type: 'image/png' }],
+    apple: [{ url: '/icon', type: 'image/png' }],
   },
 };
 

@@ -7,6 +7,7 @@ import BattleWaitingTicket from './BattleWaitingTicket';
 import BattleCompletedTicket from './BattleCompletedTicket';
 import BattleActiveList from './BattleActiveList';
 import BattlesGuestGate from './BattlesGuestGate';
+import TomorrowPitBanner from './TomorrowPitBanner';
 import { Contest, LeaderboardEntry, Participation } from '../lib/game-types';
 import type { TradeLimitInfo } from '../lib/trade-limits';
 
@@ -39,6 +40,10 @@ type BattlesTabProps = {
   isLoggedIn?: boolean;
   onSignIn?: () => void;
   onWatchTape?: () => void;
+  betweenBells?: boolean;
+  canRingInTomorrow?: boolean;
+  tomorrowParticipantCount?: number;
+  hydrated?: boolean;
 };
 
 export default function BattlesTab({
@@ -68,6 +73,10 @@ export default function BattlesTab({
   isLoggedIn = true,
   onSignIn,
   onWatchTape,
+  betweenBells = false,
+  canRingInTomorrow = false,
+  tomorrowParticipantCount = 0,
+  hydrated = true,
 }: BattlesTabProps) {
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
@@ -134,7 +143,17 @@ export default function BattlesTab({
         />
       )}
 
-      {battlesSegment === 'upcoming' && scheduledBattles.length === 0 && (
+      {battlesSegment === 'upcoming' && scheduledBattles.length === 0 && betweenBells && canRingInTomorrow && (
+        <TomorrowPitBanner
+          isJoined={false}
+          participantCount={tomorrowParticipantCount}
+          hydrated={hydrated}
+          onRingIn={onJoinPit}
+          variant="battles"
+        />
+      )}
+
+      {battlesSegment === 'upcoming' && scheduledBattles.length === 0 && !(betweenBells && canRingInTomorrow) && (
         <div className="bt-upcoming-empty">
           <p className="bt-upcoming-empty-title">Nothing on deck</p>
           <p className="bt-upcoming-empty-copy">

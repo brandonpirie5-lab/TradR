@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES } from '@/lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES, DAILY_MAX_TRADES } from '@/lib/daily-pit-config';
 import { PLATFORM_RAKE_PCT } from '@/lib/pit-pool-math';
 import { formatDailyPitScheduleLabel } from '@/lib/daily-pit-schedule';
 
@@ -66,10 +66,26 @@ export default function TermsPage() {
         </section>
 
         <section>
+          <h2>Trading limits</h2>
+          <p>
+            Each Daily Pit allows up to {DAILY_MAX_TRADES} trades per trader. Quotes must be fresh;
+            fills may be rejected if prices move beyond allowed slippage.
+          </p>
+        </section>
+
+        <section>
+          <h2>Referrals</h2>
+          <p>
+            Referral bonuses credit to TradR wallet balance when an invited user rings in their first
+            pit. Abuse (self-referral, multi-accounting) voids bonuses.
+          </p>
+        </section>
+
+        <section>
           <h2>Disclaimer</h2>
           <p>
-            This document is a pre-launch summary. A complete terms of service will govern paid
-            public launch and real-money deposits when offered.
+            TradR Pit is a skill-based fantasy trading contest, not securities trading. Contest
+            availability may vary by region. Contact support@tradr.app for account issues.
           </p>
         </section>
       </div>

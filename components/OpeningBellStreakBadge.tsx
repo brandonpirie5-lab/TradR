@@ -5,7 +5,13 @@ import { Flame } from 'lucide-react';
 import { fetchOpeningBellStreak } from '../lib/game-api';
 import { getOpeningBellStreak, type OpeningBellStreakInfo } from '../lib/opening-bell-streak';
 
-export default function OpeningBellStreakBadge({ useServer = false }: { useServer?: boolean }) {
+export default function OpeningBellStreakBadge({
+  useServer = false,
+  className = '',
+}: {
+  useServer?: boolean;
+  className?: string;
+}) {
   const [info, setInfo] = useState<OpeningBellStreakInfo | null>(null);
 
   const refresh = useCallback(async () => {
@@ -45,7 +51,10 @@ export default function OpeningBellStreakBadge({ useServer = false }: { useServe
         : null;
 
   return (
-    <div className="at-streak-badge" title="Play Opening Bell daily — streak credits hit your balance at 3 and 7 days">
+    <div
+      className={`at-streak-badge ${className}`.trim()}
+      title="Play Opening Bell daily — streak credits hit your balance at 3 and 7 days"
+    >
       <Flame size={12} className="at-streak-icon" aria-hidden />
       <span className="at-streak-text">{streakLabel}</span>
       {milestoneHint && <span className="at-streak-milestone">· {milestoneHint}</span>}

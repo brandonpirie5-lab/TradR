@@ -3860,3 +3860,64 @@
   line-height: 1.45;
   color: var(--text-secondary);
 }
+
+.dp-tomorrow-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(8, 8, 8, 0.9) 100%);
+}
+
+.dp-tomorrow-banner-battles {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.dp-tomorrow-banner-locked {
+  display: block;
+  border-color: rgba(74, 222, 128, 0.25);
+  background: rgba(74, 222, 128, 0.06);
+}
+
+.dp-tomorrow-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dp-tomorrow-kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #93c5fd;
+  margin-bottom: 4px;
+}
+
+.dp-tomorrow-banner-locked .dp-tomorrow-kicker {
+  color: #4ade80;
+}
+
+.dp-tomorrow-copy {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.dp-tomorrow-cta {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 100%);
+  border: none;
+  white-space: nowrap;
+}

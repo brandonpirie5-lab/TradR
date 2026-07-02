@@ -9,3 +9,5 @@ export const DAILY_MAX_ENTRIES = 50;
 export const DAILY_DURATION_HOURS = 6.5;
 
 export const DAILY_ASSETS = ['SPY', 'QQQ', 'NVDA', 'BTC', 'ETH'] as const;
+/** Skill cap — forces conviction, not spam-clicking */
+export const DAILY_MAX_TRADES = 20;

@@ -48,6 +48,7 @@ import { computeEffectivePool, computeMaxPaidRank, payoutForContestRankLive } fr
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import { findDailyPitContest } from '../lib/pit-contests';
 import { DAILY_ENTRY_FEE, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
+import { getCurrentDailyPitWindow } from '../lib/daily-pit-schedule';
 import { allowDevWalletTools } from '../lib/runtime-env';
 import { markSettlementSeen } from '../lib/settlement-storage';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
@@ -240,7 +241,7 @@ export default function TradR() {
   useEffect(() => {
     fetch('/api/deposits/status')
       .then((r) => r.json())
-      .then((d) => setStripeEnabled(!!d.stripe))
+      .then((d) => setStripeEnabled(!!(d.ready ?? d.stripe)))
       .catch(() => {});
 
     const params = new URLSearchParams(window.location.search);
@@ -379,6 +380,8 @@ export default function TradR() {
     !!dailyPitContest &&
     !joinedContests.includes(dailyPitContest.id) &&
     isJoinableContest(dailyPitContest);
+  const pitPhase = getCurrentDailyPitWindow().phase;
+  const betweenBells = pitPhase === 'between';
 
   const runItBack = async () => {
     const closedId = settlementResult?.contestId;
@@ -889,6 +892,10 @@ export default function TradR() {
             isLoggedIn={isLoggedIn}
             onSignIn={() => setActiveTab('account')}
             onWatchTape={() => setActiveTab('leaderboard')}
+            betweenBells={betweenBells}
+            canRingInTomorrow={betweenBells && canJoinNextPit}
+            tomorrowParticipantCount={dailyPitTraderCount}
+            hydrated={hydrated}
           />
         )}
 
@@ -965,6 +972,7 @@ export default function TradR() {
             password={password}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
+            onNotify={(msg) => showToast(msg)}
             profileSection={profileSection}
             onProfileSectionChange={setProfileSection}
             onSeedDemo={usingServerGame ? seedDemoToAccount : undefined}

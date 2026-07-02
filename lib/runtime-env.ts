@@ -12,7 +12,9 @@ export function allowDevWalletTools(stripeEnabled: boolean): boolean {
 export function walletFundingCopy(stripeEnabled: boolean): string {
   if (stripeEnabled) return 'Secure checkout via Stripe';
   if (isProductionApp()) {
-    return 'New accounts include starter balance — card deposits opening soon.';
+    return stripeEnabled
+      ? 'Secure checkout via Stripe'
+      : 'Starter balance on signup — enable Stripe in Vercel when legal is ready.';
   }
   return 'Local dev mode — test deposits only.';
 }

@@ -133,6 +133,7 @@ export default function ArenaTodayBoard({
         onViewLeaderboard={
           onViewLeaderboard ? () => onViewLeaderboard(mainItem.contest.id) : undefined
         }
+        isLoggedIn={isLoggedIn}
       />
 
       <div className="at-arena-footer">
