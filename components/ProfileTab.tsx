@@ -5,6 +5,7 @@ import { Medal } from 'lucide-react';
 import SegmentedControl from './SegmentedControl';
 import { ActivityItem, UserPerformanceStats, formatMemberSince } from '../lib/game-types';
 import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
+import { allowDevWalletTools, walletFundingCopy } from '../lib/runtime-env';
 
 type ProfileTabProps = {
   authLoading: boolean;
@@ -36,6 +37,7 @@ type ProfileTabProps = {
   onRefreshPrices?: () => void;
   onResetDemo?: () => void;
   showDevTools?: boolean;
+  inDailyPit?: boolean;
 };
 
 export default function ProfileTab({
@@ -68,11 +70,13 @@ export default function ProfileTab({
   onRefreshPrices,
   onResetDemo,
   showDevTools = false,
+  inDailyPit = false,
 }: ProfileTabProps) {
   const [usernameInput, setUsernameInput] = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
   const needsFunds = effectiveBalance < DAILY_ENTRY_FEE;
+  const devWallet = showDevTools && allowDevWalletTools(stripeEnabled);
 
   const activityItems =
     activities.length > 0
@@ -160,10 +164,12 @@ export default function ProfileTab({
         <p className="pt-meta">
           Pit member since {profile?.created_at ? formatMemberSince(profile.created_at) : 'today'}
         </p>
-        <p className="pt-rank-line">
-          <Medal size={14} /> Vault rank #{yourRank}
-          {usingServerGame && <span className="text-[10px] text-muted">· LIVE</span>}
-        </p>
+        {inDailyPit && (
+          <p className="pt-rank-line">
+            <Medal size={14} /> Today&apos;s pit rank #{yourRank}
+            {usingServerGame && <span className="text-[10px] text-muted">· LIVE</span>}
+          </p>
+        )}
         <button type="button" onClick={onLogout} className="pt-signout">
           Sign out
         </button>
@@ -196,23 +202,23 @@ export default function ProfileTab({
                 ${effectiveBalance.toFixed(2)}
               </span>
             </div>
-            <div className="pt-wallet-actions">
-              {[10, 25, 50].map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => onDeposit(amt)}
-                  disabled={depositLoading}
-                  className="pt-wallet-deposit disabled:opacity-50"
-                >
-                  +${amt}
-                </button>
-              ))}
-            </div>
-            <p className="pt-wallet-note">
-              {stripeEnabled ? 'Secure checkout via Stripe' : 'Dev deposits until Stripe is wired'}
-            </p>
-            {usingServerGame && onSeedDemo && showDevTools && (
+            {(stripeEnabled || devWallet) && (
+              <div className="pt-wallet-actions">
+                {[10, 25, 50].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => onDeposit(amt)}
+                    disabled={depositLoading}
+                    className="pt-wallet-deposit disabled:opacity-50"
+                  >
+                    +${amt}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="pt-wallet-note">{walletFundingCopy(stripeEnabled)}</p>
+            {usingServerGame && onSeedDemo && devWallet && (
               <button
                 type="button"
                 onClick={onSeedDemo}
@@ -268,7 +274,7 @@ export default function ProfileTab({
         </div>
       )}
 
-      {showDevTools && (onRefreshPrices || onResetDemo) && (
+      {devWallet && (onRefreshPrices || onResetDemo) && (
         <div className="pt-dev-footer">
           <button type="button" className="pt-dev-toggle" onClick={() => setDevOpen((v) => !v)}>
             {devOpen ? 'Hide dev tools' : 'Dev tools'}

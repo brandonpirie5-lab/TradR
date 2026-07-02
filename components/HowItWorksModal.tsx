@@ -4,11 +4,12 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES } from '../lib/daily-pit-config';
 import { PLATFORM_RAKE_PCT } from '../lib/pit-pool-math';
+import { formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
 
 const SECTIONS = [
   {
     title: 'What is TradR Pit?',
-    body: `Fantasy trading contests. Pay $${DAILY_ENTRY_FEE} to enter today's pit, trade a virtual $100,000 portfolio at live market prices, and climb the leaderboard. Top half of the field split the prize pool.`,
+    body: `One paid pit every day (${formatDailyPitScheduleLabel()}). Ring in for $${DAILY_ENTRY_FEE}, trade a virtual $100,000 portfolio at live prices on SPY, QQQ, NVDA, BTC, and ETH, and climb the leaderboard. Top half of the field split the prize pool.`,
   },
   {
     title: 'How do prizes work?',
@@ -16,11 +17,11 @@ const SECTIONS = [
   },
   {
     title: 'Is this gambling?',
-    body: 'TradR Pit is designed as a skill-based fantasy contest. You compete with virtual portfolios — no real money is invested in the market. Outcomes depend on trading decisions during the contest window, not chance.',
+    body: 'TradR Pit is a skill-based fantasy trading contest. You compete with virtual portfolios — no real money is invested in the market. Outcomes depend on trading decisions during the contest window.',
   },
   {
     title: 'Who can play?',
-    body: 'You must be 18 or older (or the legal age in your area). Availability may vary by state or region. This is a placeholder — final eligibility and terms will be published before public launch.',
+    body: 'You must be 18 or older. Contest availability may vary by state or region. By playing you agree to follow fair-play rules: one account per person, no collusion or multi-accounting.',
   },
 ] as const;
 
@@ -62,8 +63,8 @@ export default function HowItWorksModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        <p className="mt-5 pt-4 border-t border-card text-[10px] leading-relaxed text-muted">
-          Draft placeholder — not legal advice. Full terms, privacy policy, and state eligibility will ship before App Store launch.
+        <p className="text-[10px] text-muted mt-5 leading-relaxed">
+          Full terms of service and privacy policy will be published on tradr.app before paid public launch.
         </p>
       </div>
     </div>

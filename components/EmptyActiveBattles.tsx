@@ -36,7 +36,7 @@ export default function EmptyActiveBattles({
         onClick={onBrowseUpcoming}
         className={`bt-arena-link ${dailyPit ? '' : 'bt-arena-link-spaced'}`}
       >
-        <span>Browse pits in Arena</span>
+        <span>View today&apos;s pit on Arena</span>
         <span className="bt-arena-link-arrow" aria-hidden>→</span>
       </button>
     </div>

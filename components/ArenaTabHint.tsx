@@ -31,7 +31,7 @@ export default function ArenaTabHint({ suppressed = false }: { suppressed?: bool
         <br />
         <strong>Battles</strong> — trade when the bell opens.
         <br />
-        <strong>Vault</strong> — live leaderboard.
+        <strong>Vault</strong> — watch the tape or track your rank.
       </p>
       <button type="button" onClick={dismiss} className="at-tab-hint-dismiss" aria-label="Dismiss">
         <X size={14} />

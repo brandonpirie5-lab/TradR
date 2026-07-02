@@ -287,7 +287,7 @@ export function useGameState({
 
   const loadPitFeed = useCallback(
     async (contestId: number) => {
-      if (!usingServerGame) return;
+      if (!isSupabaseConfigured) return;
       setPitFeedLoading(true);
       try {
         const feed = await fetchPitFeed(contestId);
@@ -298,7 +298,7 @@ export function useGameState({
         setPitFeedLoading(false);
       }
     },
-    [usingServerGame]
+    []
   );
 
   const pushLocalFeedItem = useCallback((contestId: number, item: PitFeedItem) => {
@@ -1175,13 +1175,16 @@ export function useGameState({
   }, [user?.id, Object.keys(participations).join(','), refreshLeaderboard]);
 
   useEffect(() => {
-    if (!usingServerGame || !user || !supabase) return;
-    const ids = Object.keys(participations).map(Number);
-    if (!ids.length) return;
-    ids.forEach((id) => loadPitFeed(id));
+    if (!isSupabaseConfigured || !supabase) return;
+    const ids = new Set(Object.keys(participations).map(Number));
+    const dailyId = findDailyPitContest(contests)?.id;
+    if (dailyId) ids.add(dailyId);
+    const idList = [...ids];
+    if (!idList.length) return;
+    idList.forEach((id) => loadPitFeed(id));
     const sb = supabase;
-    const channel = sb.channel(`pit-feed-${ids.join('-')}`);
-    ids.forEach((contestId) => {
+    const channel = sb.channel(`pit-feed-${idList.join('-')}`);
+    idList.forEach((contestId) => {
       channel.on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'trade_log', filter: `contest_id=eq.${contestId}` },
@@ -1192,12 +1195,19 @@ export function useGameState({
       );
     });
     channel.subscribe();
-    const poll = setInterval(() => ids.forEach((id) => loadPitFeed(id)), 20000);
+    const poll = setInterval(() => idList.forEach((id) => loadPitFeed(id)), 20000);
     return () => {
       clearInterval(poll);
       void sb.removeChannel(channel);
     };
-  }, [usingServerGame, user?.id, Object.keys(participations).join(','), loadPitFeed, refreshLeaderboard]);
+  }, [
+    isSupabaseConfigured,
+    user?.id,
+    Object.keys(participations).join(','),
+    contests.map((c) => c.id).join(','),
+    loadPitFeed,
+    refreshLeaderboard,
+  ]);
 
   useEffect(() => {
     if (!usingServerGame) return;

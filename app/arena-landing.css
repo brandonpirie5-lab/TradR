@@ -3787,3 +3787,51 @@
   line-height: 1.5;
   color: var(--text-muted);
 }
+
+.dp-guest-bar {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dp-guest-copy {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.dp-guest-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.dp-guest-actions-empty {
+  justify-content: center;
+}
+
+.dp-guest-watch,
+.dp-guest-signin {
+  flex: 1;
+  padding: 11px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dp-guest-watch {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dp-guest-signin {
+  color: #0a0a0a;
+  background: linear-gradient(180deg, #f5d020 0%, #eab308 55%, #ca8a04 100%);
+  border: none;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
+}

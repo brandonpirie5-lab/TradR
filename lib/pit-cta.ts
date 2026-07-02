@@ -1,7 +1,7 @@
 /** Unified pit CTA copy — Arena, week rows, and free strip. */
 
 export function pitJoinLabel(entryFee: number): string {
-  return entryFee === 0 ? 'Join free' : `Join · $${entryFee}`;
+  return entryFee === 0 ? 'Ring in free' : `Ring in · $${entryFee}`;
 }
 
 export function pitActionLabel({

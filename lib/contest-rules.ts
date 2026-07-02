@@ -89,7 +89,7 @@ function buildBaseSections(
       items: [
         'Unlimited trades unless this pit specifies a cap.',
         'Quotes follow live market data; stale or slipped fills may be rejected.',
-        'Assets on the tape rotate with the market week — check the tape list before sizing up.',
+        'Same five-name tape every day — SPY, QQQ, NVDA, BTC, ETH.',
       ],
     },
     {

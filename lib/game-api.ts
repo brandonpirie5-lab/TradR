@@ -189,7 +189,13 @@ export type PitFeedItem = {
 };
 
 export async function fetchPitFeed(contestId: number, limit = 25): Promise<PitFeedItem[]> {
-  const data = await authFetch(`/api/pit-feed?contestId=${contestId}&limit=${limit}`);
+  const token = await getAccessToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`/api/pit-feed?contestId=${contestId}&limit=${limit}`, { headers });
+  if (!res.ok) throw new Error('Failed to load pit feed');
+  const data = await res.json();
   return data.feed || [];
 }
 

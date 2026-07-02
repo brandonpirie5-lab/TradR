@@ -24,6 +24,8 @@ type ArenaHomeProps = {
   stripeEnabled?: boolean;
   onDeposit?: () => void;
   isLoggedIn?: boolean;
+  onWatchTape?: () => void;
+  onSignIn?: () => void;
 };
 
 export default function ArenaHome({
@@ -44,6 +46,8 @@ export default function ArenaHome({
   stripeEnabled,
   onDeposit,
   isLoggedIn = false,
+  onWatchTape,
+  onSignIn,
 }: ArenaHomeProps) {
   return (
     <div className="af-landing af-landing-v3">
@@ -65,6 +69,8 @@ export default function ArenaHome({
         stripeEnabled={stripeEnabled}
         onDeposit={onDeposit}
         isLoggedIn={isLoggedIn}
+        onWatchTape={onWatchTape}
+        onSignIn={onSignIn}
       />
     </div>
   );

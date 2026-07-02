@@ -48,6 +48,7 @@ import { computeEffectivePool, computeMaxPaidRank, payoutForContestRankLive } fr
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import { findDailyPitContest } from '../lib/pit-contests';
 import { DAILY_ENTRY_FEE, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
+import { allowDevWalletTools } from '../lib/runtime-env';
 import { markSettlementSeen } from '../lib/settlement-storage';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
 import {
@@ -91,6 +92,7 @@ export default function TradR() {
   } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [stripeEnabled, setStripeEnabled] = useState(false);
+  const devWalletEnabled = allowDevWalletTools(stripeEnabled);
   const [depositLoading, setDepositLoading] = useState(false);
   const [infoContestId, setInfoContestId] = useState<number | null>(null);
   const [joinFlashTitle, setJoinFlashTitle] = useState<string | null>(null);
@@ -301,7 +303,7 @@ export default function TradR() {
     !!activeVaultContestId && !joinedContests.includes(activeVaultContestId);
 
   useEffect(() => {
-    if (!usingServerGame || activeTab !== 'leaderboard' || !activeVaultContestId) return;
+    if (!isSupabaseConfigured || activeTab !== 'leaderboard' || !activeVaultContestId) return;
     void refreshLeaderboard(activeVaultContestId);
     void loadPitFeed(activeVaultContestId);
     const interval = setInterval(() => {
@@ -309,7 +311,7 @@ export default function TradR() {
       void loadPitFeed(activeVaultContestId);
     }, 30000);
     return () => clearInterval(interval);
-  }, [activeTab, activeVaultContestId, usingServerGame, refreshLeaderboard, loadPitFeed]);
+  }, [activeTab, activeVaultContestId, refreshLeaderboard, loadPitFeed]);
 
   const yourRank = dynamicVault.find((e) => e.isYou)?.rank || (dynamicVault.length ? dynamicVault.length + 1 : 1);
   const vaultPlayerCount = dynamicVault.length;
@@ -591,6 +593,10 @@ export default function TradR() {
   };
 
   const deposit = async (amount: number) => {
+    if (!stripeEnabled && !devWalletEnabled) {
+      showToast('Card deposits opening soon — starter balance covers your first pit.', 'error');
+      return;
+    }
     if (stripeEnabled && usingServerGame) {
       setDepositLoading(true);
       try {
@@ -730,7 +736,7 @@ export default function TradR() {
             >
               ${effectiveBalance.toFixed(2)}
             </button>
-            {!stripeEnabled && user && (
+            {devWalletEnabled && user && (
               <button
                 onClick={() => deposit(50)}
                 className="text-[10px] px-2 py-1 border border-accent/40 text-accent rounded-lg"
@@ -771,6 +777,7 @@ export default function TradR() {
           balance={effectiveBalance}
           user={user}
           stripeEnabled={stripeEnabled}
+          devWalletEnabled={devWalletEnabled}
           onDeposit={deposit}
           onProfile={() => setActiveTab('account')}
         />
@@ -778,12 +785,17 @@ export default function TradR() {
 
       {activeTab === 'leaderboard' && (
         <PitTabChrome
-          kicker="Spectator deck"
+          kicker={isVaultSpectating ? 'Spectator deck' : 'Your pit'}
           title="Vault"
-          statusLine="Live pit leaderboard"
+          statusLine={
+            isVaultSpectating
+              ? 'Watch the tape — ring in anytime before the bell'
+              : 'Live rankings for your daily pit'
+          }
           balance={effectiveBalance}
           user={user}
           stripeEnabled={stripeEnabled}
+          devWalletEnabled={devWalletEnabled}
           onDeposit={deposit}
           onProfile={() => setActiveTab('account')}
         />
@@ -793,10 +805,11 @@ export default function TradR() {
         <PitTabChrome
           kicker="Pit identity"
           title="Profile"
-          statusLine={user ? pitDisplayName : 'Sign in to sync your tape'}
+          statusLine={user ? pitDisplayName : 'Sign in to ring in and save your tape'}
           balance={effectiveBalance}
           user={user}
           stripeEnabled={stripeEnabled}
+          devWalletEnabled={devWalletEnabled}
           onDeposit={deposit}
           onProfile={() => setActiveTab('account')}
         />
@@ -841,6 +854,8 @@ export default function TradR() {
             stripeEnabled={stripeEnabled}
             onDeposit={() => deposit(10)}
             isLoggedIn={isLoggedIn}
+            onWatchTape={() => setActiveTab('leaderboard')}
+            onSignIn={() => setActiveTab('account')}
           />
         )}
 
@@ -952,7 +967,10 @@ export default function TradR() {
             onSeedDemo={usingServerGame ? seedDemoToAccount : undefined}
             onRefreshPrices={fetchLivePrices}
             onResetDemo={resetDemo}
-            showDevTools={!stripeEnabled}
+            showDevTools={devWalletEnabled}
+            inDailyPit={
+              !!dailyPitContest && joinedContests.includes(dailyPitContest.id)
+            }
           />
         )}
       </div>

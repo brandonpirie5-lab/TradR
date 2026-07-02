@@ -44,8 +44,8 @@ export default function OnboardingPit({
     },
     {
       icon: DollarSign,
-      title: 'Fund & join',
-      body: `Deposit to your TradR wallet, then ring in. Pool grows with entries (${PLATFORM_RAKE_PCT}% platform fee). Min ${DAILY_MIN_ENTRIES} traders or the pit voids and refunds.`,
+      title: 'Ring in',
+      body: `Your wallet covers the $${DAILY_ENTRY_FEE} entry. Pool grows with every trader (${PLATFORM_RAKE_PCT}% platform fee). Min ${DAILY_MIN_ENTRIES} traders or the pit voids and refunds.`,
     },
   ];
 
@@ -97,10 +97,10 @@ export default function OnboardingPit({
         : step === 2
           ? 'GOT IT'
           : canJoin
-            ? `JOIN · $${DAILY_ENTRY_FEE}`
+            ? `RING IN · $${DAILY_ENTRY_FEE}`
             : stripeEnabled
-              ? 'DEPOSIT TO JOIN'
-              : 'ADD FUNDS';
+              ? 'DEPOSIT TO RING IN'
+              : 'CHECK WALLET';
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/95 flex items-center justify-center p-5">
@@ -157,7 +157,7 @@ export default function OnboardingPit({
             </div>
             <div>
               <span className="text-accent font-bold">Vault</span>
-              <span className="text-muted"> — live leaderboard.</span>
+              <span className="text-muted"> — watch the tape or track your rank.</span>
             </div>
           </div>
         )}
@@ -166,7 +166,7 @@ export default function OnboardingPit({
           <div className="mb-5 rounded-xl border border-card bg-surface/50 p-3 text-center">
             <div className="text-[10px] text-muted uppercase tracking-widest mb-1">Wallet balance</div>
             <div className="font-mono text-2xl text-accent font-bold">${balance.toLocaleString()}</div>
-            <div className="text-[11px] text-muted mt-1">${DAILY_ENTRY_FEE} required to join</div>
+            <div className="text-[11px] text-muted mt-1">${DAILY_ENTRY_FEE} to ring in today</div>
           </div>
         )}
 

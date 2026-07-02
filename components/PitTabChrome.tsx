@@ -10,6 +10,7 @@ type PitTabChromeProps = {
   balance: number;
   user: { email?: string | null } | null;
   stripeEnabled?: boolean;
+  devWalletEnabled?: boolean;
   onDeposit?: (amount: number) => void;
   onProfile: () => void;
   trailing?: React.ReactNode;
@@ -22,6 +23,7 @@ export default function PitTabChrome({
   balance,
   user,
   stripeEnabled = false,
+  devWalletEnabled = false,
   onDeposit,
   onProfile,
   trailing,
@@ -42,7 +44,7 @@ export default function PitTabChrome({
             <span className="ptc-balance-label">Balance</span>
             <span className="ptc-balance-value">${balance.toFixed(2)}</span>
           </div>
-          {!stripeEnabled && user && onDeposit && (
+          {devWalletEnabled && user && onDeposit && (
             <button type="button" onClick={() => onDeposit(50)} className="ptc-deposit-chip">
               +$50
             </button>

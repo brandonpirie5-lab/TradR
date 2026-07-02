@@ -3,7 +3,7 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
-import { DAILY_ASSETS, DAILY_ENTRY_FEE, DAILY_MAX_ENTRIES } from '../lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_MAX_ENTRIES } from '../lib/daily-pit-config';
 import { getCurrentDailyPitWindow, formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
 import { computeEffectivePool, computeMaxPaidRank } from '../lib/pit-pool-math';
 import { getPitFillStatus } from '../lib/contest-fill';
@@ -140,7 +140,7 @@ export default function DailyPitEventHero({
         {pitActionLabel({ isJoined, isTradingOpen: tradingOpen, entryFee: contest.entryFee })}
       </button>
 
-      <p className="dp-event-tape">Tape: {DAILY_ASSETS.join(' · ')}</p>
+      <p className="dp-event-tape">Tape: {contest.assets.join(' · ')}</p>
 
       {board.length >= 2 && onViewLeaderboard && (
         <ArenaTapeLeaders contest={contest} entries={board} onViewAll={onViewLeaderboard} />

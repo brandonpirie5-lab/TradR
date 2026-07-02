@@ -119,7 +119,7 @@ export default function BattlesTab({
         <div className="bt-upcoming-empty">
           <p className="bt-upcoming-empty-title">Nothing on deck</p>
           <p className="bt-upcoming-empty-copy">
-            Rang-in tickets show here before the bell. Head to Arena to join more pits.
+            Rang-in tickets show here before the bell. Head to Arena to ring in for today&apos;s pit.
           </p>
         </div>
       )}
@@ -142,7 +142,7 @@ export default function BattlesTab({
 
       {battlesSegment === 'upcoming' && (
         <button type="button" className="bt-arena-link" onClick={onGoArena}>
-          <span>Join more contests in Arena</span>
+          <span>Ring in on Arena</span>
           <span className="bt-arena-link-arrow" aria-hidden>
             →
           </span>

@@ -141,7 +141,11 @@ export function enrichContest(contest: Contest, meta?: PitCatalogEntry | null): 
     (legacySlug ? getCatalogBySlug(legacySlug) : undefined) ||
     PIT_CONTEST_CATALOG[0];
   const slug = DAILY_PIT_SLUG;
-  const scheduled = applyScheduleToContestAssets({ ...contest, slug });
+  const catalogAssets = [...m.assets];
+  const scheduled =
+    slug === DAILY_PIT_SLUG
+      ? { ...contest, slug, assets: catalogAssets }
+      : applyScheduleToContestAssets({ ...contest, slug });
   const entryFee = Math.max(DAILY_ENTRY_FEE, Number(contest.entryFee ?? m.entryFee));
   return {
     ...scheduled,

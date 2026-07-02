@@ -1,3 +1,6 @@
+import { DAILY_ASSETS } from './daily-pit-config';
+import { isDailyPitSlug } from './daily-pit-schedule';
+
 /**
  * TradR weekly asset tape — each pit gets a deliberate lineup per weekday.
  *
@@ -228,6 +231,20 @@ export function resolveContestAssets(
           poolLabel: 'Custom',
         }
       : null;
+  }
+
+  if (isDailyPitSlug(slug)) {
+    const anchor = startsAt ? new Date(startsAt) : new Date();
+    const dayName = DAY_NAMES[dayIndexFromDate(anchor)];
+    const assets = fallback.length ? fallback : [...DAILY_ASSETS];
+    return {
+      assets,
+      poolId: 'tradfi-hybrid',
+      theme: `${dayName} • Daily tape`,
+      dayName,
+      assetCount: assets.length,
+      poolLabel: 'Daily five',
+    };
   }
 
   const anchor = startsAt ? new Date(startsAt) : new Date();

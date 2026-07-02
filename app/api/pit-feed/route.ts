@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
-import { getUserFromRequest, unauthorizedResponse } from '@/lib/auth';
+import { getUserFromRequest } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
+/** Public read — spectators can watch the tape; auth only marks isYou. */
 export async function GET(request: NextRequest) {
   const user = await getUserFromRequest(request);
-  if (!user) return unauthorizedResponse();
 
   const contestId = Number(request.nextUrl.searchParams.get('contestId'));
   if (!contestId) {
@@ -17,15 +17,14 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  const { data: part } = await admin
-    .from('participations')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('contest_id', contestId)
+  const { data: contest } = await admin
+    .from('contests')
+    .select('status')
+    .eq('id', contestId)
     .maybeSingle();
 
-  if (!part) {
-    return Response.json({ error: 'Join this pit to view live feed' }, { status: 403 });
+  if (!contest) {
+    return Response.json({ error: 'Contest not found' }, { status: 404 });
   }
 
   const { data: trades, error } = await admin
@@ -56,7 +55,7 @@ export async function GET(request: NextRequest) {
     price: Number(t.price),
     total: Number(t.total),
     createdAt: t.created_at,
-    isYou: t.user_id === user.id,
+    isYou: user ? t.user_id === user.id : false,
   }));
 
   return Response.json({ feed });

@@ -26,6 +26,8 @@ type ArenaTodayBoardProps = {
   stripeEnabled?: boolean;
   onDeposit?: () => void;
   isLoggedIn?: boolean;
+  onWatchTape?: () => void;
+  onSignIn?: () => void;
 };
 
 export default function ArenaTodayBoard({
@@ -45,6 +47,8 @@ export default function ArenaTodayBoard({
   stripeEnabled,
   onDeposit,
   isLoggedIn = false,
+  onWatchTape,
+  onSignIn,
 }: ArenaTodayBoardProps) {
   const mainItem = pits[0];
   const mainBoard = mainItem && getContestBoard ? getContestBoard(mainItem.contest.id) : [];
@@ -65,6 +69,16 @@ export default function ArenaTodayBoard({
             </p>
           )}
           <p className="dp-event-empty-sub">One pit. $5 in. Top half cash. Every single day.</p>
+          {!isLoggedIn && onWatchTape && onSignIn && (
+            <div className="dp-guest-actions dp-guest-actions-empty mt-5">
+              <button type="button" className="dp-guest-watch" onClick={onWatchTape}>
+                Watch the tape
+              </button>
+              <button type="button" className="dp-guest-signin" onClick={onSignIn}>
+                Sign in to ring in
+              </button>
+            </div>
+          )}
         </div>
         {onShowHowItWorks && (
           <button type="button" className="at-arena-footer-link mt-4" onClick={onShowHowItWorks}>
@@ -77,6 +91,22 @@ export default function ArenaTodayBoard({
 
   return (
     <div className="at-board at-board-v3">
+      {!isLoggedIn && onWatchTape && onSignIn && (
+        <div className="dp-guest-bar">
+          <p className="dp-guest-copy">
+            Watch today&apos;s pit live — no account needed.
+          </p>
+          <div className="dp-guest-actions">
+            <button type="button" className="dp-guest-watch" onClick={onWatchTape}>
+              Watch the tape
+            </button>
+            <button type="button" className="dp-guest-signin" onClick={onSignIn}>
+              Sign in to ring in
+            </button>
+          </div>
+        </div>
+      )}
+
       {isLoggedIn && (
         <LowBalanceNudge
           balance={balance}
