@@ -10,10 +10,8 @@ import { getPitFillStatus } from '../lib/contest-fill';
 import { pitActionLabel } from '../lib/pit-cta';
 import { isContestTradingOpen } from '../lib/contest-bell';
 import ArenaCountdownRing from './ArenaCountdownRing';
-import PitFillBanner from './PitFillBanner';
 import OpeningBellStreakBadge from './OpeningBellStreakBadge';
 import TomorrowPitBanner from './TomorrowPitBanner';
-import SocialProofStrip from './SocialProofStrip';
 import ArenaTapeLeaders from './ArenaTapeLeaders';
 import type { ArenaPitItem } from './ArenaHome';
 
@@ -29,6 +27,8 @@ type DailyPitEventHeroProps = {
   onEnter: () => void;
   onViewLeaderboard?: () => void;
   isLoggedIn?: boolean;
+  onWatchTape?: () => void;
+  onShowHowItWorks?: () => void;
 };
 
 export default function DailyPitEventHero({
@@ -43,64 +43,63 @@ export default function DailyPitEventHero({
   onEnter,
   onViewLeaderboard,
   isLoggedIn = false,
+  onWatchTape,
+  onShowHowItWorks,
 }: DailyPitEventHeroProps) {
   const { contest, scheduled } = item;
   const phase = getCurrentDailyPitWindow().phase;
   const fill = getPitFillStatus(contest, participantCount);
-  const displayCount = Math.max(participantCount, fill.minEntries);
-  const pool = computeEffectivePool(contest.slug, {
+  const tradingOpen = isContestTradingOpen(contest);
+  const poolLive = computeEffectivePool(contest.slug, {
     entryFee: contest.entryFee || DAILY_ENTRY_FEE,
-    participantCount: displayCount,
-  });
-  const poolPreview = participantCount < fill.minEntries;
-  const maxPool = computeEffectivePool(contest.slug, {
-    entryFee: contest.entryFee || DAILY_ENTRY_FEE,
-    participantCount: DAILY_MAX_ENTRIES,
+    participantCount: Math.max(participantCount, fill.minEntries),
   });
   const paid = computeMaxPaidRank(contest.slug, Math.max(participantCount, fill.minEntries));
-  const tradingOpen = isContestTradingOpen(contest);
-  const fillPct = Math.min(100, Math.round((participantCount / DAILY_MAX_ENTRIES) * 100));
+  const spotsLeft = Math.max(0, DAILY_MAX_ENTRIES - participantCount);
 
-  const phaseLabel =
-    phase === 'live' && tradingOpen
-      ? 'LIVE ON THE FLOOR'
-      : phase === 'pre_open' || scheduled
-        ? 'RING IN EARLY'
-        : 'BETWEEN BELLS';
+  const statusLine = (() => {
+    if (participantCount >= fill.minEntries) {
+      return (
+        <>
+          <strong>{participantCount}</strong> in · <strong>${poolLive.toLocaleString()}</strong> pool · top{' '}
+          <strong>{paid}</strong> paid · {spotsLeft} spots left
+        </>
+      );
+    }
+    return (
+      <>
+        <strong>{participantCount}/{fill.minEntries}</strong> to unlock ${poolLive.toLocaleString()} pool ·{' '}
+        {spotsLeft} spots left
+      </>
+    );
+  })();
+
+  const primaryLabel = pitActionLabel({
+    isJoined,
+    isTradingOpen: tradingOpen,
+    entryFee: contest.entryFee,
+    scheduled,
+  });
 
   return (
-    <section className="dp-event-hero" data-tour="arena-hero">
-      <div className="dp-event-top">
-        <div>
-          <p className="dp-event-kicker">Today&apos;s only pit</p>
+    <section className="dp-poster" data-tour="arena-hero">
+      <div className="dp-poster-head">
+        <div className="dp-poster-head-text">
+          <h1 className="dp-poster-title">$5 in · top half cash</h1>
+          <p className="dp-poster-sub">
+            Trade {contest.assets.slice(0, 5).join(' · ')} — one pit, {formatDailyPitScheduleLabel().toLowerCase()}
+          </p>
           <OpeningBellStreakBadge useServer={isLoggedIn} className="mt-2" />
         </div>
-        <button type="button" onClick={onInfo} className="at-info-btn" aria-label="Contest info">
+        <button type="button" onClick={onInfo} className="at-info-btn" aria-label="How it works">
           <Info size={14} />
         </button>
       </div>
 
-      <div className={`dp-event-poster ${phase === 'live' && tradingOpen ? 'dp-event-poster-live' : ''}`}>
-        <div className="dp-event-poster-glow" aria-hidden />
-        <div className="dp-event-phase">
-          <span className={`dp-event-phase-dot ${phase === 'live' && tradingOpen ? 'dp-event-phase-dot-live' : ''}`} />
-          {phaseLabel}
-        </div>
-
-        <div className="dp-event-pool-block">
-          <div className="dp-event-pool-label">Live prize pool</div>
-          <div className={`dp-event-pool-amount ${poolPreview ? 'dp-event-pool-preview' : ''}`}>
-            ${pool.toLocaleString()}
-            {poolPreview && <span className="dp-event-pool-at-min"> at {fill.minEntries}</span>}
-          </div>
-          <div className="dp-event-pool-sub">
-            {poolPreview
-              ? `Unlocks at ${fill.minEntries} traders · ${participantCount}/${fill.minEntries} now`
-              : `Top ${paid || '—'} split the pot · $${DAILY_ENTRY_FEE} entry`}
-          </div>
-        </div>
-
-        <div className="dp-event-ring-row">
+      <div
+        className={`dp-poster-card ${phase === 'live' && tradingOpen ? 'dp-poster-card-live' : ''} ${isJoined ? 'dp-poster-card-joined' : ''}`}
+      >
+        <div className="dp-poster-ring-wrap">
           <ArenaCountdownRing
             contest={contest}
             scheduled={scheduled}
@@ -109,85 +108,58 @@ export default function DailyPitEventHero({
             size="lg"
             variant="af"
           />
-          <div className="dp-event-ring-copy">
-            <div className="dp-event-title">{contest.title}</div>
-            <div className="dp-event-schedule">{formatDailyPitScheduleLabel()}</div>
-            <div className="dp-event-cap">
-              Room: {participantCount}/{DAILY_MAX_ENTRIES} · up to ${maxPool.toLocaleString()} today
-            </div>
-          </div>
         </div>
 
-        <div className="dp-event-fill-bar" aria-hidden>
-          <div className="dp-event-fill-track">
-            <div className="dp-event-fill-progress" style={{ width: `${fillPct}%` }} />
+        <p className="dp-poster-status" role="status">
+          {statusLine}
+        </p>
+
+        {isJoined && liveStats && tradingOpen && (
+          <div className="dp-poster-ticket">
+            <span className="dp-poster-ticket-rank">#{liveStats.rank ?? '—'}</span>
+            <span className="dp-poster-ticket-val">${liveStats.liveValue.toLocaleString()}</span>
+            <span className={liveStats.pnlPct >= 0 ? 'dp-poster-ticket-up' : 'dp-poster-ticket-down'}>
+              {liveStats.pnlPct >= 0 ? '+' : ''}
+              {liveStats.pnlPct.toFixed(1)}%
+            </span>
           </div>
-          <div className="dp-event-fill-labels">
-            <span>{participantCount} traders</span>
-            <span>Full house ${maxPool.toLocaleString()}</span>
-          </div>
+        )}
+
+        <div className="dp-poster-actions">
+          <button type="button" onClick={onEnter} className="at-cta dp-poster-cta-primary">
+            {primaryLabel}
+          </button>
+          {!isLoggedIn && onWatchTape && (
+            <button type="button" onClick={onWatchTape} className="dp-poster-cta-secondary">
+              Watch live
+            </button>
+          )}
         </div>
       </div>
 
-      <SocialProofStrip participantCount={participantCount} slug={contest.slug} />
-
-      <PitFillBanner fill={fill} className="mt-3" />
-
-      {phase === 'between' && (
+      {phase === 'between' && !isJoined && (
         <TomorrowPitBanner
-          isJoined={isJoined}
+          isJoined={false}
           participantCount={participantCount}
           hydrated={hydrated}
-          onRingIn={!isJoined ? onEnter : undefined}
+          onRingIn={onEnter}
         />
       )}
 
-      {(scheduled || phase === 'pre_open') && (
-        <div className="dp-early-ring">
-          {isJoined ? (
-            <>
-              <span className="dp-early-ring-kicker">Spot locked</span>
-              <span className="dp-early-ring-copy">
-                You&apos;re in — trading opens at the bell. Ticket shows in Battles → Upcoming.
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="dp-early-ring-kicker">Ring in early</span>
-              <span className="dp-early-ring-copy">
-                Lock your ${contest.entryFee} spot before the room fills (max {DAILY_MAX_ENTRIES}{' '}
-                traders). One pit per day — not a week of separate contests.
-              </span>
-            </>
-          )}
-        </div>
+      {isJoined && !tradingOpen && (scheduled || phase === 'pre_open') && (
+        <p className="dp-poster-locked">
+          Spot locked — ticket in <strong>Battles → Upcoming</strong>. Trading opens at the bell.
+        </p>
       )}
 
-      {isJoined && liveStats && (
-        <div className="dp-event-your-ticket">
-          <span className="dp-event-your-kicker">Your ticket</span>
-          <span className="dp-event-your-rank">#{liveStats.rank ?? '—'}</span>
-          <span className="dp-event-your-value">${liveStats.liveValue.toLocaleString()}</span>
-          <span className={liveStats.pnlPct >= 0 ? 'dp-event-your-pnl-up' : 'dp-event-your-pnl-down'}>
-            {liveStats.pnlPct >= 0 ? '+' : ''}
-            {liveStats.pnlPct.toFixed(1)}%
-          </span>
-        </div>
-      )}
-
-      <button type="button" onClick={onEnter} className="at-cta dp-event-cta">
-        {pitActionLabel({
-          isJoined,
-          isTradingOpen: tradingOpen,
-          entryFee: contest.entryFee,
-          scheduled,
-        })}
-      </button>
-
-      <p className="dp-event-tape">Tape: {contest.assets.join(' · ')}</p>
-
-      {board.length >= 2 && onViewLeaderboard && (
+      {board.length >= 2 && isJoined && onViewLeaderboard && (
         <ArenaTapeLeaders contest={contest} entries={board} onViewAll={onViewLeaderboard} />
+      )}
+
+      {onShowHowItWorks && (
+        <button type="button" className="dp-poster-how" onClick={onShowHowItWorks}>
+          How it works
+        </button>
       )}
     </section>
   );

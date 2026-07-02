@@ -4,6 +4,7 @@ import React from 'react';
 import { Contest, LeaderboardEntry } from '../lib/game-types';
 import { getCurrentDailyPitWindow, formatDailyPitScheduleLabel, msUntilDailyPitOpen } from '../lib/daily-pit-schedule';
 import { formatBellCountdown } from '../lib/contest-bell';
+import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
 import type { ArenaPitItem } from './ArenaHome';
 import DailyPitEventHero from './DailyPitEventHero';
 import LowBalanceNudge from './LowBalanceNudge';
@@ -36,7 +37,6 @@ export default function ArenaTodayBoard({
   pits,
   joinedContestIds,
   getParticipantCount,
-  getRank,
   bellTick,
   hydrated,
   onInfo,
@@ -64,63 +64,43 @@ export default function ArenaTodayBoard({
   const mainItem = pits[0];
   const mainBoard = mainItem && getContestBoard ? getContestBoard(mainItem.contest.id) : [];
   const mainJoined = mainItem ? joinedContestIds.includes(mainItem.contest.id) : false;
-  const phase = getCurrentDailyPitWindow().phase;
 
   if (!mainItem) {
     const openMs = msUntilDailyPitOpen();
     return (
       <div className="at-board at-board-v3">
-        <div className="dp-event-empty">
-          <p className="dp-event-empty-kicker">Daily Pit</p>
-          <h2 className="dp-event-empty-title">Between bells</h2>
-          <p className="dp-event-empty-copy">{formatDailyPitScheduleLabel()}</p>
+        <div className="dp-poster dp-poster-empty">
+          <h1 className="dp-poster-title">$5 in · top half cash</h1>
+          <p className="dp-poster-sub">{formatDailyPitScheduleLabel()}</p>
           {hydrated && openMs > 0 && (
-            <p className="dp-event-empty-countdown">
-              Next pit opens in <strong>{formatBellCountdown(openMs)}</strong>
+            <p className="dp-poster-empty-countdown">
+              Next pit in <strong>{formatBellCountdown(openMs)}</strong>
             </p>
           )}
-          <p className="dp-event-empty-sub">
-            One pit per day — ring in early tomorrow to lock your spot. Not a full week slate; same
-            tape, same $5 entry, every session.
-          </p>
-          {!isLoggedIn && onWatchTape && onSignIn && (
-            <div className="dp-guest-actions dp-guest-actions-empty mt-5">
-              <button type="button" className="dp-guest-watch" onClick={onWatchTape}>
-                Watch the tape
+          <div className="dp-poster-actions">
+            {!isLoggedIn && onWatchTape && (
+              <button type="button" className="dp-poster-cta-secondary" onClick={onWatchTape}>
+                Watch live
               </button>
-              <button type="button" className="dp-guest-signin" onClick={onSignIn}>
-                Sign in to ring in
+            )}
+            {!isLoggedIn && onSignIn && (
+              <button type="button" className="at-cta dp-poster-cta-primary" onClick={onSignIn}>
+                Sign in · ring in ${DAILY_ENTRY_FEE}
               </button>
-            </div>
+            )}
+          </div>
+          {onShowHowItWorks && (
+            <button type="button" className="dp-poster-how" onClick={onShowHowItWorks}>
+              How it works
+            </button>
           )}
         </div>
-        {onShowHowItWorks && (
-          <button type="button" className="at-arena-footer-link mt-4" onClick={onShowHowItWorks}>
-            How it works
-          </button>
-        )}
       </div>
     );
   }
 
   return (
     <div className="at-board at-board-v3">
-      {!isLoggedIn && onWatchTape && onSignIn && (
-        <div className="dp-guest-bar">
-          <p className="dp-guest-copy">
-            Watch today&apos;s pit live — no account needed.
-          </p>
-          <div className="dp-guest-actions">
-            <button type="button" className="dp-guest-watch" onClick={onWatchTape}>
-              Watch the tape
-            </button>
-            <button type="button" className="dp-guest-signin" onClick={onSignIn}>
-              Sign in to ring in
-            </button>
-          </div>
-        </div>
-      )}
-
       {isLoggedIn && (
         <LowBalanceNudge
           balance={balance}
@@ -145,22 +125,9 @@ export default function ArenaTodayBoard({
           onViewLeaderboard ? () => onViewLeaderboard(mainItem.contest.id) : undefined
         }
         isLoggedIn={isLoggedIn}
+        onWatchTape={!isLoggedIn ? onWatchTape : undefined}
+        onShowHowItWorks={onShowHowItWorks}
       />
-
-      <div className="at-arena-footer">
-        <p className="at-arena-footer-tagline">
-          <strong>One pit. Every day.</strong>{' '}
-          {phase === 'live' ? 'The pool grows with every trader who rings in.' : 'Same clock, same bell, bigger pot.'}
-        </p>
-        <p className="at-arena-footer-trust">
-          {formatDailyPitScheduleLabel()} · 10% platform fee ·{' '}
-          {onShowHowItWorks ? (
-            <button type="button" className="at-arena-footer-link" onClick={onShowHowItWorks}>
-              How it works
-            </button>
-          ) : null}
-        </p>
-      </div>
     </div>
   );
 }

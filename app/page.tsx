@@ -49,7 +49,7 @@ import { computeEffectivePool, computeMaxPaidRank, payoutForContestRankLive } fr
 import { findNextJoinablePit, buildPitShareText } from '../lib/next-pit';
 import { findDailyPitContest } from '../lib/pit-contests';
 import { DAILY_ENTRY_FEE, DAILY_PIT_SLUG } from '../lib/daily-pit-config';
-import { getCurrentDailyPitWindow } from '../lib/daily-pit-schedule';
+import { getCurrentDailyPitWindow, formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
 import { allowDevWalletTools } from '../lib/runtime-env';
 import { markSettlementSeen } from '../lib/settlement-storage';
 import { hasCompletedOnboarding, markOnboardingComplete } from '../lib/onboarding-storage';
@@ -656,7 +656,10 @@ export default function TradR() {
   const completeOnboarding = (opts?: { skipped?: boolean }) => {
     markOnboardingComplete(user?.id);
     setShowOnboarding(false);
-    if (opts?.skipped) setActiveTab('home');
+    if (opts?.skipped) {
+      setActiveTab('home');
+      showToast('Come back at 9:30 AM ET — or ring in early anytime');
+    }
   };
 
   const showArenaNavDot =
@@ -736,29 +739,49 @@ export default function TradR() {
               TRADR<span>PIT</span>
             </div>
             <div className="pit-chrome-status">
-              {floorLivePitCount > 0 && <span className="pit-chrome-orb" aria-hidden />}
-              <span>Daily Pit</span>
-              {dailyPitContest && (
+              {isLoggedIn ? (
                 <>
+                  {floorLivePitCount > 0 && <span className="pit-chrome-orb" aria-hidden />}
+                  <span>Daily Pit</span>
+                  {dailyPitContest && (
+                    <>
+                      <span className="pit-chrome-status-sep">·</span>
+                      <span>
+                        {dailyPitTraderCount > 0
+                          ? `${dailyPitTraderCount} in · $${floorPrizePool.toLocaleString()} pool · top ${floorPaidCount || '—'} paid`
+                          : 'Be first to ring in'}
+                      </span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>$5 in · top half cash</span>
                   <span className="pit-chrome-status-sep">·</span>
-                  <span>
-                    {dailyPitTraderCount > 0
-                      ? `${dailyPitTraderCount} in · $${floorPrizePool.toLocaleString()} pool · top ${floorPaidCount || '—'} paid`
-                      : 'Be first to ring in'}
-                  </span>
+                  <span>{formatDailyPitScheduleLabel()}</span>
                 </>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('account')}
-              className={`font-mono text-sm font-semibold tabular-nums ${balanceShortForPit ? 'pit-chrome-balance-low' : 'text-[var(--text)]'}`}
-              title={balanceShortForPit ? `Need $${DAILY_ENTRY_FEE} to join` : 'Wallet balance'}
-            >
-              ${effectiveBalance.toFixed(2)}
-            </button>
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('account')}
+                className={`font-mono text-sm font-semibold tabular-nums ${balanceShortForPit ? 'pit-chrome-balance-low' : 'text-[var(--text)]'}`}
+                title={balanceShortForPit ? `Need $${DAILY_ENTRY_FEE} to join` : 'Wallet balance'}
+              >
+                ${effectiveBalance.toFixed(2)}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveTab('account')}
+                className="text-xs font-bold text-accent px-2 py-1"
+              >
+                Sign in
+              </button>
+            )}
             {devWalletEnabled && user && (
               <button
                 onClick={() => deposit(50)}

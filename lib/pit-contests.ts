@@ -97,15 +97,13 @@ function dailyPitPickScore(contest: DailyPitLike): number {
   return id;
 }
 
-/** Canonical open daily pit — prefers trading > active > joinable. */
+/** Canonical open daily pit — daily-pit slug only; prefers trading > active > joinable. */
 export function findDailyPitContest<T extends DailyPitLike>(contests: T[]): T | undefined {
-  const open = contests.filter((c) => c.status !== 'closed' && Number(c.entryFee ?? 0) > 0);
-  if (!open.length) {
-    const legacy = contests.filter((c) => c.status !== 'closed');
-    if (!legacy.length) return undefined;
-    return legacy.reduce((best, c) => (dailyPitPickScore(c) > dailyPitPickScore(best) ? c : best));
-  }
-  return open.reduce((best, c) => (dailyPitPickScore(c) > dailyPitPickScore(best) ? c : best));
+  const daily = contests.filter((c) => isDailyPitContest(c) && c.status !== 'closed');
+  if (!daily.length) return undefined;
+  const paid = daily.filter((c) => Number(c.entryFee ?? 0) > 0);
+  const pool = paid.length ? paid : daily;
+  return pool.reduce((best, c) => (dailyPitPickScore(c) > dailyPitPickScore(best) ? c : best));
 }
 
 /** @deprecated */
