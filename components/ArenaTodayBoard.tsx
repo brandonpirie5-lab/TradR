@@ -68,7 +68,10 @@ export default function ArenaTodayBoard({
               Next pit opens in <strong>{formatBellCountdown(openMs)}</strong>
             </p>
           )}
-          <p className="dp-event-empty-sub">One pit. $5 in. Top half cash. Every single day.</p>
+          <p className="dp-event-empty-sub">
+            One pit per day — ring in early tomorrow to lock your spot. Not a full week slate; same
+            tape, same $5 entry, every session.
+          </p>
           {!isLoggedIn && onWatchTape && onSignIn && (
             <div className="dp-guest-actions dp-guest-actions-empty mt-5">
               <button type="button" className="dp-guest-watch" onClick={onWatchTape}>

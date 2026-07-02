@@ -8,14 +8,18 @@ export function pitActionLabel({
   isJoined,
   isTradingOpen,
   entryFee,
+  scheduled = false,
 }: {
   isJoined: boolean;
   isTradingOpen: boolean;
   entryFee: number;
+  scheduled?: boolean;
 }): string {
-  if (!isJoined) return pitJoinLabel(entryFee);
+  if (!isJoined) {
+    return scheduled ? `Ring in early · $${entryFee}` : pitJoinLabel(entryFee);
+  }
   if (isTradingOpen) return 'Trade now';
-  return 'Rang in';
+  return 'Locked in — bell soon';
 }
 
 /** Week-row / compact secondary buttons (same verbs, shorter where needed). */

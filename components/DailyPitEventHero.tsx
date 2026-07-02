@@ -124,6 +124,27 @@ export default function DailyPitEventHero({
 
       <PitFillBanner fill={fill} className="mt-3" />
 
+      {(scheduled || phase === 'pre_open') && (
+        <div className="dp-early-ring">
+          {isJoined ? (
+            <>
+              <span className="dp-early-ring-kicker">Spot locked</span>
+              <span className="dp-early-ring-copy">
+                You&apos;re in — trading opens at the bell. Ticket shows in Battles → Upcoming.
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="dp-early-ring-kicker">Ring in early</span>
+              <span className="dp-early-ring-copy">
+                Lock your ${contest.entryFee} spot before the room fills (max {DAILY_MAX_ENTRIES}{' '}
+                traders). One pit per day — not a week of separate contests.
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       {isJoined && liveStats && (
         <div className="dp-event-your-ticket">
           <span className="dp-event-your-kicker">Your ticket</span>
@@ -137,7 +158,12 @@ export default function DailyPitEventHero({
       )}
 
       <button type="button" onClick={onEnter} className="at-cta dp-event-cta">
-        {pitActionLabel({ isJoined, isTradingOpen: tradingOpen, entryFee: contest.entryFee })}
+        {pitActionLabel({
+          isJoined,
+          isTradingOpen: tradingOpen,
+          entryFee: contest.entryFee,
+          scheduled,
+        })}
       </button>
 
       <p className="dp-event-tape">Tape: {contest.assets.join(' · ')}</p>

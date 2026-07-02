@@ -18,7 +18,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://tradr-green.vercel.app');
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: "TradR Pit — $5 Daily Trading Contest",
   description:
     "One pit every day. $5 in, trade SPY · QQQ · NVDA · BTC · ETH, top half split the pool. 9:30 AM – 4 PM ET.",

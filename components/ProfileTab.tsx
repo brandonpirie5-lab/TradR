@@ -6,6 +6,7 @@ import SegmentedControl from './SegmentedControl';
 import { ActivityItem, UserPerformanceStats, formatMemberSince } from '../lib/game-types';
 import { DAILY_ENTRY_FEE } from '../lib/daily-pit-config';
 import { allowDevWalletTools, walletFundingCopy } from '../lib/runtime-env';
+import LegalFooter from './LegalFooter';
 
 type ProfileTabProps = {
   authLoading: boolean;
@@ -280,6 +281,8 @@ export default function ProfileTab({
           )}
         </div>
       )}
+
+      <LegalFooter className="mt-6" />
 
       {devWallet && (onRefreshPrices || onResetDemo) && (
         <div className="pt-dev-footer">

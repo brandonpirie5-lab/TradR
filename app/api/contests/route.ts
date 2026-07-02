@@ -2,11 +2,18 @@ import { dedupeContestRows } from '@/lib/contest-pool-cleanup';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { DbContest } from '@/lib/game-types';
 import { schedulePitCycle } from '@/lib/pit-cycle-lock';
+import { ensureDailyPitContest } from '@/lib/ensure-daily-pit';
 
 export async function GET() {
   const admin = getSupabaseAdmin();
   if (!admin) {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
+  }
+
+  try {
+    await ensureDailyPitContest(admin);
+  } catch (e) {
+    console.warn('ensureDailyPitContest', e);
   }
 
   // Don't block the contest list — cycle can take 30s+ with settle + week spawn.

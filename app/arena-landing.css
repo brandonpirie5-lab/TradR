@@ -3835,3 +3835,28 @@
   border: none;
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
 }
+
+.dp-early-ring {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.22);
+  background: rgba(234, 179, 8, 0.06);
+}
+
+.dp-early-ring-kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.dp-early-ring-copy {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}

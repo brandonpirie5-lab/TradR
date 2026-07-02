@@ -2,14 +2,19 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES } from '../lib/daily-pit-config';
+import { DAILY_ENTRY_FEE, DAILY_MIN_ENTRIES, DAILY_MAX_ENTRIES } from '../lib/daily-pit-config';
 import { PLATFORM_RAKE_PCT } from '../lib/pit-pool-math';
 import { formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
+import LegalFooter from './LegalFooter';
 
 const SECTIONS = [
   {
     title: 'What is TradR Pit?',
     body: `One paid pit every day (${formatDailyPitScheduleLabel()}). Ring in for $${DAILY_ENTRY_FEE}, trade a virtual $100,000 portfolio at live prices on SPY, QQQ, NVDA, BTC, and ETH, and climb the leaderboard. Top half of the field split the prize pool.`,
+  },
+  {
+    title: 'Can I ring in early?',
+    body: `Yes — for today's pit (or tomorrow's after the bell), ring in before 9:30 AM ET to lock your $${DAILY_ENTRY_FEE} spot. Your ticket moves to Battles → Upcoming until trading opens. This is one pit per day, not a separate contest for every day of the week. Max ${DAILY_MAX_ENTRIES} traders — early ring-in guarantees your seat before the room fills.`,
   },
   {
     title: 'How do prizes work?',
@@ -63,9 +68,7 @@ export default function HowItWorksModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        <p className="text-[10px] text-muted mt-5 leading-relaxed">
-          Full terms of service and privacy policy will be published on tradr.app before paid public launch.
-        </p>
+        <LegalFooter className="mt-5" />
       </div>
     </div>
   );
