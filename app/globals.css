@@ -7,6 +7,16 @@
   --accent: #EAB308;
   --accent-light: #FACC15;
   --gold: #EAB308;
+  /* Arena — warm black + metallic gold (restraint: accent only on money & CTAs) */
+  --pit-void: #060504;
+  --pit-carbon: #0E0C0A;
+  --pit-slate: #161412;
+  --pit-gold: #C9A227;
+  --pit-gold-light: #E8C547;
+  --pit-gold-pale: #F2DB7A;
+  --pit-gold-deep: #8B6914;
+  --pit-gold-glow: rgba(201, 162, 39, 0.14);
+  --pit-gold-border: rgba(201, 162, 39, 0.28);
   --text: #F4F4F5;
   --text-secondary: #A1A1AA;
   --text-muted: #71717A;
