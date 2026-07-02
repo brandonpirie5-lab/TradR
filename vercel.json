@@ -6,15 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/pit-cycle",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/pit-cycle",
-      "schedule": "25 13 * * 1-5"
-    },
-    {
-      "path": "/api/cron/pit-cycle",
-      "schedule": "55 19 * * 1-5"
+      "schedule": "0 14 * * *"
     }
   ]
 }
