@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0A0A0A;
+  --bg: #060504;
   --card: #121212;
   --card-border: #1F1F1F;
-  --accent: #EAB308;
-  --accent-light: #FACC15;
-  --gold: #EAB308;
+  --accent: #C9A227;
+  --accent-light: #E8C547;
+  --gold: #C9A227;
   /* Arena — warm black + metallic gold (restraint: accent only on money & CTAs) */
   --pit-void: #060504;
   --pit-carbon: #0E0C0A;
@@ -25,7 +25,7 @@
   /* Additional surfaces used in the app */
   --surface: #1A1A1A;
   --surface-2: #252525;
-  --tab-bar: #0F0F0F;
+  --tab-bar: #0A0908;
   --overlay: #181818;
   --user-card: #2C2110;
   --pill-bg: #3F2A0D;
@@ -160,7 +160,7 @@ body {
 /* Bottom tab bar - distinct arena style */
 .tab-bar {
   background-color: var(--tab-bar);
-  border-top: 1px solid #222;
+  border-top: 1px solid rgba(201, 162, 39, 0.12);
 }
 
 .tab-item {

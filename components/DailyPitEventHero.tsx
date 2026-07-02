@@ -8,13 +8,12 @@ import {
   getCurrentDailyPitWindow,
   formatDailyPitScheduleLabel,
   formatDailyPitPhaseLabel,
-  msUntilDailyPitOpen,
 } from '../lib/daily-pit-schedule';
 import { computeEffectivePool, computeMaxPaidRank } from '../lib/pit-pool-math';
 import { getPitFillStatus } from '../lib/contest-fill';
 import { pitActionLabel } from '../lib/pit-cta';
-import { formatBellCountdown, isContestTradingOpen } from '../lib/contest-bell';
-import ArenaCountdownRing from './ArenaCountdownRing';
+import { isContestTradingOpen } from '../lib/contest-bell';
+import PitBellClock from './PitBellClock';
 import OpeningBellStreakBadge from './OpeningBellStreakBadge';
 import ArenaTapeLeaders from './ArenaTapeLeaders';
 import PitMoneyDisplay from './PitMoneyDisplay';
@@ -48,19 +47,12 @@ function floorPhaseMeta(
   return { ribbon: 'THE DAILY PIT', tone: 'open' };
 }
 
-function countdownCaption(scheduled: boolean, tradingOpen: boolean, phase: string): string {
-  if (phase === 'between') return 'Next bell';
-  if (scheduled) return 'Opens in';
-  if (tradingOpen) return 'Closes in';
-  return 'Status';
-}
-
 export default function DailyPitEventHero({
   item,
   isJoined,
   participantCount,
   bellTick,
-  hydrated,
+  hydrated: _hydrated,
   board,
   liveStats,
   onInfo,
@@ -81,8 +73,6 @@ export default function DailyPitEventHero({
   const paid = computeMaxPaidRank(contest.slug, Math.max(participantCount, fill.minEntries));
   const spotsLeft = Math.max(0, DAILY_MAX_ENTRIES - participantCount);
   const fillPct = Math.min(100, (participantCount / fill.minEntries) * 100);
-  const betweenOpenMs = phase === 'between' ? msUntilDailyPitOpen() : 0;
-
   const primaryLabel = pitActionLabel({
     isJoined,
     isTradingOpen: tradingOpen,
@@ -165,25 +155,14 @@ export default function DailyPitEventHero({
           </span>
         </div>
 
-        <div className="pit-floor-clock">
-          <ArenaCountdownRing
-            contest={contest}
-            scheduled={scheduled || phase === 'between'}
-            tick={bellTick}
-            urgent={tone === 'live'}
-            size="lg"
-            variant="af"
-          />
-          <div className="pit-floor-clock-copy">
-            <span className="pit-floor-clock-label">
-              {countdownCaption(scheduled, tradingOpen, phase)}
-            </span>
-            <span className="pit-floor-clock-phase">{formatDailyPitPhaseLabel(phase)}</span>
-            {phase === 'between' && hydrated && betweenOpenMs > 0 && (
-              <span className="pit-floor-clock-sub">{formatBellCountdown(betweenOpenMs)} to ring-in</span>
-            )}
-          </div>
-        </div>
+        <PitBellClock
+          contest={contest}
+          scheduled={scheduled}
+          phase={phase}
+          tick={bellTick}
+          urgent={tone === 'live'}
+        />
+        <p className="pit-floor-phase-line">{formatDailyPitPhaseLabel(phase)}</p>
 
         {showTicket && (
           <div className="pit-floor-ticket">

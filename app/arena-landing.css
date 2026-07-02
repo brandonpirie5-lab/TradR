@@ -4271,26 +4271,29 @@
   color: var(--text);
 }
 
-.pit-floor-clock {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+/* Slim bell clock — replaces center countdown ring */
+.pit-bell-clock {
+  margin-bottom: 8px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.pit-floor-clock-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+.pit-bell-clock-live {
+  border-color: var(--pit-gold-border);
+  background: rgba(201, 162, 39, 0.05);
 }
 
-.pit-floor-clock-label {
+.pit-bell-clock-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pit-bell-clock-label {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -4298,18 +4301,43 @@
   color: var(--text-muted);
 }
 
-.pit-floor-clock-phase {
+.pit-bell-clock-time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
-.pit-floor-clock-sub {
+.pit-bell-clock-live .pit-bell-clock-time {
+  color: var(--pit-gold-pale);
+}
+
+.pit-bell-clock-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.pit-bell-clock-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pit-gold-deep) 0%, var(--pit-gold-light) 100%);
+  transition: width 0.5s ease;
+}
+
+.pit-bell-clock-live .pit-bell-clock-fill {
+  box-shadow: 0 0 8px var(--pit-gold-glow);
+}
+
+.pit-floor-phase-line {
+  margin: 0 0 14px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--pit-gold-light);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-align: center;
+  color: var(--text-muted);
 }
 
 .pit-floor-ticket {
