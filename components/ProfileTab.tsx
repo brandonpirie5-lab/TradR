@@ -97,8 +97,15 @@ export default function ProfileTab({
   if (!user) {
     return (
       <div className="pt-shell tab-content-enter">
+        <div className="pt-guest-hero">
+          <p className="pt-guest-kicker">TradR Pit</p>
+          <h2 className="pt-guest-title">One pit. Every day.</h2>
+          <p className="pt-guest-copy">
+            ${DAILY_ENTRY_FEE} in · top half cash · watch the tape free before you ring in.
+          </p>
+        </div>
         <div className="pt-wallet-card">
-          <p className="pt-invite-title text-center mb-3">Sign in to the pit</p>
+          <p className="pt-invite-title text-center mb-3">Sign in to ring in</p>
           <div className="space-y-3">
             <input
               type="email"

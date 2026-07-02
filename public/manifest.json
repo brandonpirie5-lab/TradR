@@ -1,7 +1,7 @@
 {
   "name": "TradR Pit",
   "short_name": "TradR",
-  "description": "Fantasy trading contests — fake money, real ego.",
+  "description": "One $5 daily pit. Trade live. Top half cash.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",

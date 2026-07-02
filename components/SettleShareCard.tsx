@@ -124,7 +124,9 @@ export default function SettleShareCard({
           {structure.hook}
         </div>
       </div>
-      <p className="text-[10px] text-muted text-center mt-2">Screenshot this card — built for the feed.</p>
+      <p className="text-[10px] text-muted text-center mt-2">
+        Screenshot for the feed · one pit every day · top half cash
+      </p>
     </div>
   );
 }

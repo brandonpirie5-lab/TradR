@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Contest, Participation } from '../lib/game-types';
-import AssetChip from './AssetChip';
 import ScheduledPitChip from './ScheduledPitChip';
 
 type BattleWaitingTicketProps = {
@@ -16,18 +15,17 @@ export default function BattleWaitingTicket({
   participation,
   bellTick,
 }: BattleWaitingTicketProps) {
-  const assets = contest.assets.slice(0, 4);
-  const assetOverflow = contest.assets.length - assets.length;
-  const entryLabel = contest.entryFee === 0 ? 'Free entry' : `$${contest.entryFee} entry`;
+  const entryLabel = contest.entryFee === 0 ? 'Free entry' : `$${contest.entryFee} rang in`;
 
   return (
-    <article className="bt-ticket bt-ticket-waiting">
+    <article className="bt-ticket bt-ticket-waiting bt-ticket-poster">
+      <div className="bt-ticket-poster-glow bt-ticket-poster-glow-wait" aria-hidden />
       <div className="bt-ticket-accent bt-ticket-accent-wait" aria-hidden />
       <div className="bt-ticket-inner">
         <div className="bt-ticket-top">
           <div className="bt-ticket-badges">
-            <span className="bt-badge bt-badge-in">In</span>
-            <span className="bt-badge bt-badge-soon">Opens soon</span>
+            <span className="bt-badge bt-badge-in">Rang in</span>
+            <span className="bt-badge bt-badge-soon">Pre-bell</span>
           </div>
         </div>
 
@@ -41,23 +39,14 @@ export default function BattleWaitingTicket({
           <ScheduledPitChip contest={contest} tick={bellTick} />
         </div>
 
-        {assets.length > 0 && (
-          <div className="bt-ticket-assets">
-            {assets.map((symbol) => (
-              <AssetChip key={symbol} symbol={symbol} size="sm" />
-            ))}
-            {assetOverflow > 0 && (
-              <span className="bt-ticket-asset-more">+{assetOverflow}</span>
-            )}
-          </div>
-        )}
+        <p className="bt-ticket-tape-line">Tape: {contest.assets.join(' · ')}</p>
 
         <p className="bt-ticket-wait-foot">
-          <span className="bt-ticket-meta-strong">${participation.cash.toLocaleString()} ready</span>
+          <span className="bt-ticket-meta-strong">${participation.cash.toLocaleString()} loaded</span>
           <span> · </span>
           <span>{entryLabel}</span>
           <span> · </span>
-          <span>Tape opens at the bell</span>
+          <span>Trading opens at the bell</span>
         </p>
       </div>
     </article>

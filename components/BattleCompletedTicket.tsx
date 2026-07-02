@@ -53,7 +53,7 @@ export default function BattleCompletedTicket({
         {isWinner && (
           <div className="bt-done-celebration">
             <Trophy size={18} className="text-accent" />
-            <span>You took the pit</span>
+            <span>Bell rung — you took the pit</span>
           </div>
         )}
 

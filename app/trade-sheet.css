@@ -1,4 +1,4 @@
-/* Trade sheet — slim pit ticket */
+/* Trade sheet — event poster energy */
 
 .ts-overlay {
   position: fixed;
@@ -6,7 +6,7 @@
   z-index: 60;
   display: flex;
   align-items: flex-end;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.92);
 }
 
 .ts-sheet {
@@ -18,35 +18,25 @@
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
   border-top: 1px solid rgba(234, 179, 8, 0.28);
-  background: #0c0c0c;
-  padding: 16px 16px 28px;
+  background: #080808;
+  padding: 14px 16px 28px;
 }
 
-.ts-head {
+.ts-sheet-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
-.ts-title {
+.ts-sheet-kicker {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-  color: var(--text);
-}
-
-.ts-bell {
-  margin-top: 4px;
-  font-size: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--text-muted);
-}
-
-.ts-bell-urgent {
-  color: #f87171;
 }
 
 .ts-head-actions {
@@ -64,6 +54,156 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ts-poster {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 14px 14px 12px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(234, 179, 8, 0.22);
+  background: linear-gradient(165deg, rgba(234, 179, 8, 0.07) 0%, rgba(8, 8, 8, 0.96) 45%);
+}
+
+.ts-poster-live {
+  border-color: rgba(74, 222, 128, 0.28);
+  background: linear-gradient(165deg, rgba(74, 222, 128, 0.06) 0%, rgba(8, 8, 8, 0.96) 45%);
+}
+
+.ts-poster-glow {
+  position: absolute;
+  top: -50%;
+  right: -25%;
+  width: 55%;
+  height: 90%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(234, 179, 8, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ts-poster-live .ts-poster-glow {
+  background: radial-gradient(circle, rgba(74, 222, 128, 0.08) 0%, transparent 70%);
+}
+
+.ts-poster-phase {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.ts-poster-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.ts-poster-dot-live {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.55);
+  animation: af-pulse 2.2s ease-in-out infinite;
+}
+
+.ts-poster-title {
+  position: relative;
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.ts-poster-stats {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ts-poster-stat-label {
+  display: block;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.ts-poster-stat-rank {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.ts-poster-stat-main {
+  text-align: right;
+}
+
+.ts-poster-value {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+  transition: color 0.3s ease;
+}
+
+.ts-poster-value-up {
+  color: #4ade80;
+}
+
+.ts-poster-value-down {
+  color: #f87171;
+}
+
+.ts-poster-pnl-up,
+.ts-poster-pnl-down {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ts-poster-pnl-up {
+  color: #4ade80;
+}
+
+.ts-poster-pnl-down {
+  color: #f87171;
+}
+
+.ts-poster-bell {
+  position: relative;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.ts-poster-bell-closed {
+  color: #f87171;
+}
+
+.ts-poster-tape {
+  position: relative;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .ts-zone {
@@ -101,11 +241,12 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .ts-asset-on {
-  border-color: rgba(234, 179, 8, 0.4);
-  background: rgba(234, 179, 8, 0.06);
+  border-color: rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.08);
   box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.12);
 }
 
@@ -194,7 +335,6 @@
 .ts-side-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .ts-side-btn {

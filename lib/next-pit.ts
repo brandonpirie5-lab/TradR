@@ -97,6 +97,7 @@ export function buildPitShareText(params: {
     perf = ` · $${params.portfolioValue.toLocaleString()} (${sign}${pct}%)`;
   }
 
-  const prize = params.payout && params.payout > 0 ? ` · +$${params.payout} won` : '';
-  return `TradR Pit — #${rank} in ${params.contestTitle}${perf}${prize}\n$5 daily pit · top half cash: ${url}`;
+  const prize = params.payout && params.payout > 0 ? ` · WON $${params.payout}` : '';
+  const emoji = params.payout && params.payout > 0 ? '🏆 ' : params.rank === 1 ? '🥇 ' : '';
+  return `${emoji}TradR Pit — #${rank} today${perf}${prize}\nOne pit. $5 in. Top half cash.\n${url}`;
 }

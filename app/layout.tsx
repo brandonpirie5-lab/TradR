@@ -19,9 +19,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TradR Pit • Fake Money, Real Ego",
-  description: "Live multiplayer fantasy trading. Ring in free, size up in paid pits, read the tape when the bell hits. Outtrade the room.",
+  title: "TradR Pit — $5 Daily Trading Contest",
+  description:
+    "One pit every day. $5 in, trade SPY · QQQ · NVDA · BTC · ETH, top half split the pool. 9:30 AM – 4 PM ET.",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "TradR Pit — $5 Daily Trading Contest",
+    description:
+      "One pit. Every day. Ring in for $5, climb the leaderboard, top half cash. Watch the tape live.",
+    siteName: "TradR Pit",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TradR Pit — $5 Daily Trading Contest",
+    description: "One pit. Every day. Top half cash. Watch the tape or ring in.",
+  },
   appleWebApp: {
     capable: true,
     title: "TradR Pit",

@@ -764,7 +764,7 @@ export default function TradR() {
 
       {activeTab === 'entries' && (
         <PitTabChrome
-          kicker="Your tickets"
+          kicker="Your ticket"
           title="Battles"
           statusLine={
             <>
@@ -886,6 +886,9 @@ export default function TradR() {
             onLeaderboard={openLeaderboard}
             onInfo={(contestId) => setInfoContestId(contestId)}
             onRecap={openContestRecap}
+            isLoggedIn={isLoggedIn}
+            onSignIn={() => setActiveTab('account')}
+            onWatchTape={() => setActiveTab('leaderboard')}
           />
         )}
 

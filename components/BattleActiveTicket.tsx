@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { Contest, LeaderboardEntry, Participation } from '../lib/game-types';
 import { analyzeMoneyZone } from '../lib/money-zone';
 import { TimeLeftLabel } from './BellCountdown';
-import AssetChip from './AssetChip';
+
 import MoneyZoneBar from './MoneyZoneBar';
 import TradeMeter from './TradeMeter';
 import type { TradeLimitInfo } from '../lib/trade-limits';
@@ -52,26 +52,21 @@ export default function BattleActiveTicket({
       : zone.status === 'bubble'
         ? 'bt-ticket-zone-bubble'
         : '';
-  const assets = contest.assets.slice(0, 4);
-  const assetOverflow = contest.assets.length - assets.length;
-
   return (
     <article
-      className={`bt-ticket bt-ticket-active ${zoneTone} ${hero ? 'bt-ticket-lead' : ''}`}
+      className={`bt-ticket bt-ticket-active bt-ticket-poster ${zoneTone} ${hero ? 'bt-ticket-lead' : ''}`}
       data-tour="overview"
     >
+      <div className="bt-ticket-poster-glow" aria-hidden />
       <div className="bt-ticket-accent" aria-hidden />
       <div className="bt-ticket-inner">
         <div className="bt-ticket-top">
           <div className="bt-ticket-badges">
-            {hero ? (
-              <span className="bt-badge bt-badge-lead">Lead pit</span>
-            ) : (
-              <span className="bt-badge bt-badge-live">
-                <span className="bt-badge-dot" aria-hidden />
-                Live
-              </span>
-            )}
+            <span className="bt-badge bt-badge-live">
+              <span className="bt-badge-dot" aria-hidden />
+              Live
+            </span>
+            {hero && <span className="bt-badge bt-badge-lead">Your ticket</span>}
             {calm.displayRank != null && (
               <span className="bt-badge bt-badge-rank">#{calm.displayRank}</span>
             )}
@@ -115,16 +110,7 @@ export default function BattleActiveTicket({
           </div>
         </div>
 
-        {assets.length > 0 && (
-          <div className="bt-ticket-assets">
-            {assets.map((symbol) => (
-              <AssetChip key={symbol} symbol={symbol} size="sm" />
-            ))}
-            {assetOverflow > 0 && (
-              <span className="bt-ticket-asset-more">+{assetOverflow}</span>
-            )}
-          </div>
-        )}
+        <p className="bt-ticket-tape-line">Tape: {contest.assets.join(' · ')}</p>
 
         <div className="bt-ticket-zone" data-tour="money-zone">
           <MoneyZoneBar
@@ -177,10 +163,10 @@ export default function BattleActiveTicket({
         )}
 
         <button type="button" onClick={onTrade} className="bt-ticket-cta" data-tour="trade">
-          {hero ? 'Trade this pit' : 'Trade now'}
+          {hero ? 'Send it — trade now' : 'Trade now'}
         </button>
         <button type="button" onClick={onLeaderboard} className="bt-ticket-action-full">
-          Leaderboard
+          Vault leaderboard
         </button>
       </div>
     </article>

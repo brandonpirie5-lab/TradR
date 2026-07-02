@@ -158,22 +158,8 @@ export default function TradeSheet({
   return (
     <div className="ts-overlay">
       <div className="ts-sheet">
-        <div className="ts-head">
-          <div className="flex-1 min-w-0">
-            <h2 className="ts-title">{contest.title}</h2>
-            <div className={`ts-bell ${closed ? 'ts-bell-urgent' : ''}`}>
-              {!hydrated ? '—' : closed ? 'Bell rung — trading closed' : (
-                <BellCountdown contest={contest} tick={bellTick} prefix="Bell in " openText="Pit open" />
-              )}
-            </div>
-            {calm.displayRank != null && (
-              <p className="text-[11px] text-muted mt-1">
-                Rank <span className="text-accent font-mono font-bold">#{calm.displayRank}</span>
-                {' · '}
-                <span className="font-mono text-secondary">${calm.displayValue.toLocaleString()}</span>
-              </p>
-            )}
-          </div>
+        <div className="ts-sheet-top">
+          <p className="ts-sheet-kicker">On the tape</p>
           <div className="ts-head-actions">
             <button type="button" onClick={onInfo} className="ts-icon-btn" aria-label="Contest info">
               <Info size={14} />
@@ -182,6 +168,39 @@ export default function TradeSheet({
               <X size={18} />
             </button>
           </div>
+        </div>
+
+        <div className={`ts-poster ${closed ? '' : 'ts-poster-live'}`}>
+          <div className="ts-poster-glow" aria-hidden />
+          <div className="ts-poster-phase">
+            <span className={`ts-poster-dot ${closed ? '' : 'ts-poster-dot-live'}`} />
+            {closed ? 'BELL RUNG' : 'LIVE ON THE TAPE'}
+          </div>
+          <h2 className="ts-poster-title">{contest.title}</h2>
+          <div className="ts-poster-stats">
+            <div className="ts-poster-stat">
+              <span className="ts-poster-stat-label">Rank</span>
+              <span className="ts-poster-stat-rank">#{calm.displayRank ?? '—'}</span>
+            </div>
+            <div className="ts-poster-stat ts-poster-stat-main">
+              <span className="ts-poster-stat-label">Portfolio</span>
+              <span
+                className={`ts-poster-value ${calm.valueFlash === 'up' ? 'ts-poster-value-up' : calm.valueFlash === 'down' ? 'ts-poster-value-down' : ''}`}
+              >
+                ${calm.displayValue.toLocaleString()}
+              </span>
+              <span className={calm.displayPnl >= 0 ? 'ts-poster-pnl-up' : 'ts-poster-pnl-down'}>
+                {calm.displayPnl >= 0 ? '+' : ''}
+                {calm.displayPnl.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+          <div className={`ts-poster-bell ${closed ? 'ts-poster-bell-closed' : ''}`}>
+            {!hydrated ? '—' : closed ? 'Trading closed' : (
+              <BellCountdown contest={contest} tick={bellTick} prefix="Bell in " openText="Pit open" />
+            )}
+          </div>
+          <p className="ts-poster-tape">Tape: {contest.assets.join(' · ')}</p>
         </div>
 
         <div className="ts-zone">

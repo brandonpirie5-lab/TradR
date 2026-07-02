@@ -114,6 +114,39 @@
   text-align: left;
 }
 
+.pt-guest-hero {
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(234, 179, 8, 0.18);
+  background: linear-gradient(165deg, rgba(234, 179, 8, 0.06) 0%, rgba(10, 10, 10, 0.94) 45%);
+}
+
+.pt-guest-kicker {
+  margin: 0 0 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pt-guest-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.pt-guest-copy {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .pt-invite-title {
   font-size: 14px;
   font-weight: 700;

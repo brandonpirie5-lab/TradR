@@ -6,6 +6,7 @@ import EmptyActiveBattles from './EmptyActiveBattles';
 import BattleWaitingTicket from './BattleWaitingTicket';
 import BattleCompletedTicket from './BattleCompletedTicket';
 import BattleActiveList from './BattleActiveList';
+import BattlesGuestGate from './BattlesGuestGate';
 import { Contest, LeaderboardEntry, Participation } from '../lib/game-types';
 import type { TradeLimitInfo } from '../lib/trade-limits';
 
@@ -35,6 +36,9 @@ type BattlesTabProps = {
   onLeaderboard: (contestId: number) => void;
   onInfo: (contestId: number) => void;
   onRecap: (contestId: number) => void;
+  isLoggedIn?: boolean;
+  onSignIn?: () => void;
+  onWatchTape?: () => void;
 };
 
 export default function BattlesTab({
@@ -61,8 +65,23 @@ export default function BattlesTab({
   onLeaderboard,
   onInfo,
   onRecap,
+  isLoggedIn = true,
+  onSignIn,
+  onWatchTape,
 }: BattlesTabProps) {
   const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  if (!isLoggedIn && onSignIn && onWatchTape) {
+    return (
+      <div className="bt-shell tab-content-enter">
+        <BattlesGuestGate
+          onSignIn={onSignIn}
+          onWatchTape={onWatchTape}
+          onRingIn={onSignIn}
+        />
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (battlesSegment !== 'completed' || highlightDoneContestId == null) return;
