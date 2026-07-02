@@ -48,10 +48,14 @@ export default function PitFeed({
           <div className="px-4 py-2.5 text-xs text-muted animate-pulse">Loading tape…</div>
         ) : (
           <div className="pit-feed-track py-2.5">
-            {doubled.map((item, i) => (
+            {doubled.map((item, i) => {
+              const notional = (item.shares || 0) * (item.price || 0);
+              const isWhale = notional >= 25_000;
+              const isBig = notional >= 10_000;
+              return (
               <span
                 key={`${item.id}-${i}`}
-                className={`pit-feed-item ${item.isYou ? 'pit-feed-you' : ''}`}
+                className={`pit-feed-item ${item.isYou ? 'pit-feed-you' : ''} ${isWhale ? 'pit-feed-whale' : isBig ? 'pit-feed-big' : ''}`}
               >
                 <span className={item.side === 'buy' ? 'text-accent' : 'text-red-400'}>
                   {item.side.toUpperCase()}
@@ -61,8 +65,10 @@ export default function PitFeed({
                 <span className="font-mono">${item.price?.toFixed(item.price && item.price < 10 ? 4 : 2)}</span>
                 <span className="text-muted mx-1.5">•</span>
                 <span className={item.isYou ? 'text-accent font-semibold' : ''}>{item.username}</span>
+                {isWhale && <span className="pit-feed-flash"> WHALE</span>}
               </span>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

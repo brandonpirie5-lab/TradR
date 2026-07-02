@@ -999,6 +999,8 @@ export function useGameState({
     return () => clearInterval(t);
   }, []);
 
+  const [contestsBooting, setContestsBooting] = useState(isSupabaseConfigured);
+
   // Boot
   useEffect(() => {
     const boot = async () => {
@@ -1012,7 +1014,11 @@ export function useGameState({
           }
         } catch (e) {
           console.warn('Using local contest fallback', e);
+        } finally {
+          setContestsBooting(false);
         }
+      } else {
+        setContestsBooting(false);
       }
 
       const saved = localStorage.getItem('tradr-state');
@@ -1388,5 +1394,6 @@ export function useGameState({
     simulateMarket,
     resetDemo,
     serverSettledShownRef,
+    contestsBooting,
   };
 }

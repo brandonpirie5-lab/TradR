@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { DbContest } from '@/lib/game-types';
 import { schedulePitCycle } from '@/lib/pit-cycle-lock';
 import { ensureDailyPitContest } from '@/lib/ensure-daily-pit';
+import { ensurePitLiquidity } from '@/lib/ensure-pit-liquidity';
 
 export async function GET() {
   const admin = getSupabaseAdmin();
@@ -10,8 +11,12 @@ export async function GET() {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
   }
 
+  let pitId: number | null = null;
   try {
-    await ensureDailyPitContest(admin);
+    pitId = await ensureDailyPitContest(admin);
+    if (pitId) {
+      ensurePitLiquidity(admin, pitId).catch((e) => console.warn('ensurePitLiquidity', e));
+    }
   } catch (e) {
     console.warn('ensureDailyPitContest', e);
   }

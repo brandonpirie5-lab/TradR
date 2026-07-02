@@ -1,5 +1,8 @@
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase-env';
+import { getAppUrl } from '@/lib/app-url';
+import { isStripeConfigured } from '@/lib/stripe';
+import { fetchMarketPrices } from '@/lib/market-prices';
 
 const SERVER_UA = 'TradR-Server/1.0';
 
@@ -202,9 +205,27 @@ export async function GET() {
     );
   }
 
+  let pricesOk = false;
+  let pricesDetail = 'not probed';
+  try {
+    const px = await fetchMarketPrices(['SPY']);
+    pricesOk = Number(px.SPY) > 0;
+    pricesDetail = pricesOk ? `SPY $${px.SPY}` : 'no quote';
+  } catch (e) {
+    pricesDetail = e instanceof Error ? e.message : 'probe failed';
+  }
+
+  const stripeConfigured = isStripeConfigured;
+  const stripeWebhook = !!process.env.STRIPE_WEBHOOK_SECRET;
+
   return Response.json({
     ok: true,
-    checks,
+    checks: {
+      ...checks,
+      prices: pricesOk ? 'ok' : `fail (${pricesDetail})`,
+      stripe: stripeConfigured && stripeWebhook ? 'live-ready' : stripeConfigured ? 'needs-webhook' : 'off',
+      appUrl: getAppUrl(),
+    },
     contestsFound: data?.length ?? 0,
     projectUrl: url,
   });

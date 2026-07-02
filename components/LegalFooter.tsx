@@ -15,6 +15,12 @@ export default function LegalFooter({ className = '' }: { className?: string }) 
       <Link href="/privacy" className="legal-footer-link">
         Privacy
       </Link>
+      <span className="legal-footer-sep" aria-hidden>
+        ·
+      </span>
+      <Link href="/support" className="legal-footer-link">
+        Support
+      </Link>
     </footer>
   );
 }

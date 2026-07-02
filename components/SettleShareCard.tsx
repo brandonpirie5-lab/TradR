@@ -125,7 +125,7 @@ export default function SettleShareCard({
         </div>
       </div>
       <p className="text-[10px] text-muted text-center mt-2">
-        Screenshot for the feed · one pit every day · top half cash
+        Screenshot or tap Share for your result card link · one pit every day
       </p>
     </div>
   );

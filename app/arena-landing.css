@@ -3921,3 +3921,103 @@
   border: none;
   white-space: nowrap;
 }
+
+.dp-social-proof {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-chip, 12px);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dp-social-proof-live {
+  border-color: rgba(234, 179, 8, 0.2);
+  background: rgba(234, 179, 8, 0.05);
+  color: var(--text);
+}
+
+.dp-event-pool-preview {
+  opacity: 0.85;
+}
+
+.dp-event-pool-at-min {
+  font-size: 0.42em;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+/* Arena loading skeleton */
+.arena-skeleton .arena-skel-guest {
+  height: 72px;
+  border-radius: var(--radius-card, 20px);
+  margin-bottom: 12px;
+  background: linear-gradient(90deg, #141414 25%, #1c1c1c 50%, #141414 75%);
+  background-size: 200% 100%;
+  animation: arena-shimmer 1.4s ease-in-out infinite;
+}
+
+.arena-skeleton .arena-skel-poster {
+  border-radius: var(--radius-card, 20px);
+  padding: 18px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #0e0e0e;
+}
+
+.arena-skel-line {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background: linear-gradient(90deg, #141414 25%, #222 50%, #141414 75%);
+  background-size: 200% 100%;
+  animation: arena-shimmer 1.4s ease-in-out infinite;
+}
+
+.arena-skel-line-lg { height: 36px; width: 70%; }
+.arena-skel-line-md { width: 55%; }
+.arena-skel-line-sm { width: 35%; height: 10px; }
+
+.arena-skel-ring-row {
+  display: flex;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.arena-skel-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #141414 25%, #222 50%, #141414 75%);
+  background-size: 200% 100%;
+  animation: arena-shimmer 1.4s ease-in-out infinite;
+}
+
+.arena-skel-ring-copy { flex: 1; padding-top: 8px; }
+
+.arena-skel-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  margin-top: 8px;
+}
+
+.arena-skel-cta {
+  height: 48px;
+  margin-top: 16px;
+  border-radius: var(--radius-btn, 14px);
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.15) 25%, rgba(234, 179, 8, 0.25) 50%, rgba(234, 179, 8, 0.15) 75%);
+  background-size: 200% 100%;
+  animation: arena-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes arena-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

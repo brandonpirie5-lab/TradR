@@ -58,26 +58,7 @@ async function authFetch(path: string, options: RequestInit = {}) {
   return data;
 }
 
-export async function ensureWeekSlate(): Promise<void> {
-  try {
-    await fetch('/api/contests/ensure-week', {
-      method: 'POST',
-      headers: { 'x-tradr-client': 'arena' },
-    });
-  } catch {
-    /* non-fatal — contests may already exist */
-  }
-}
 
-let weekSlateOnce: Promise<void> | null = null;
-
-/** Spawn week slate at most once per page session — avoids API storms in dev. */
-export function ensureWeekSlateOnce(): Promise<void> {
-  if (!weekSlateOnce) {
-    weekSlateOnce = ensureWeekSlate();
-  }
-  return weekSlateOnce;
-}
 
 async function fetchWithTimeout(path: string, init: RequestInit = {}, ms = 20000): Promise<Response> {
   const controller = new AbortController();

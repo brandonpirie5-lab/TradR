@@ -19,6 +19,7 @@ import PitTabChrome from '../components/PitTabChrome';
 import VaultTab from '../components/VaultTab';
 import ProfileTab from '../components/ProfileTab';
 import TradeSheet from '../components/TradeSheet';
+import PitErrorBoundary from '../components/PitErrorBoundary';
 
 
 import { useHydrated } from '../lib/use-hydrated';
@@ -232,6 +233,7 @@ export default function TradR() {
     computeDemoStats,
     resetDemo,
     serverSettledShownRef,
+    contestsBooting,
   } = game;
 
   // Screen guides are manual only (help button) — auto-tour blocked clicks and felt like a freeze.
@@ -322,6 +324,23 @@ export default function TradR() {
 
   const shareSettlement = async () => {
     if (!settlementResult) return;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://tradr-green.vercel.app';
+    const pnl =
+      settlementResult.startingValue > 0
+        ? (
+            ((settlementResult.portfolioValue - settlementResult.startingValue) /
+              settlementResult.startingValue) *
+            100
+          ).toFixed(1)
+        : '';
+    const ogParams = new URLSearchParams({
+      rank: String(settlementResult.rank),
+      title: settlementResult.contestTitle,
+      payout: String(settlementResult.payout || 0),
+      ...(settlementResult.voided ? { voided: '1' } : {}),
+      ...(pnl ? { pnl: `${Number(pnl) >= 0 ? '+' : ''}${pnl}%` } : {}),
+    });
+    const imageUrl = `${origin}/api/og/result?${ogParams.toString()}`;
     const text = buildPitShareText({
       contestTitle: settlementResult.contestTitle,
       rank: settlementResult.rank,
@@ -333,10 +352,10 @@ export default function TradR() {
     });
     try {
       if (navigator.share) {
-        await navigator.share({ text, title: 'TradR Pit' });
+        await navigator.share({ text: `${text}\n${imageUrl}`, title: 'TradR Pit', url: imageUrl });
       } else {
-        await navigator.clipboard.writeText(text);
-        showToast('Result copied — share the tape');
+        await navigator.clipboard.writeText(`${text}\n${imageUrl}`);
+        showToast('Result + share card link copied');
       }
     } catch {
       /* user cancelled share */
@@ -706,6 +725,7 @@ export default function TradR() {
     }
   };
   return (
+    <PitErrorBoundary>
     <div className={`app-container mx-auto bg-background text-[var(--text)] min-h-screen flex flex-col ${activeTab === 'home' ? 'arena-mode' : ''} ${rankShake ? 'screen-rank-shake' : ''}`}>
       <SetupBanner />
       {/* Header */}
@@ -819,7 +839,7 @@ export default function TradR() {
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 pb-28 overflow-y-auto ${activeTab === 'home' ? 'px-4 pt-0 arena-scroll' : 'px-5 pt-4'}`}>
+      <div className={`flex-1 app-main-scroll overflow-y-auto ${activeTab === 'home' ? 'px-4 pt-0 arena-scroll' : 'px-5 pt-4'}`}>
         
         {/* ARENA TAB */}
         {activeTab === 'home' && (
@@ -859,6 +879,7 @@ export default function TradR() {
             isLoggedIn={isLoggedIn}
             onWatchTape={() => setActiveTab('leaderboard')}
             onSignIn={() => setActiveTab('account')}
+            loading={contestsBooting && arenaPitList.length === 0}
           />
         )}
 
@@ -987,7 +1008,7 @@ export default function TradR() {
       </div>
 
       {/* Bottom Tab Bar - Arena style with underline active */}
-      <div className="tab-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-50 h-[68px]">
+      <div className="tab-bar tab-bar-safe fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-50">
         <div className="flex justify-around items-center h-full px-2 text-xs">
           {[
             { id: 'home', label: 'ARENA', icon: Home },
@@ -1172,5 +1193,6 @@ export default function TradR() {
         </div>
       )}
     </div>
+    </PitErrorBoundary>
   );
 }

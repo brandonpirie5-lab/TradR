@@ -146,18 +146,20 @@ export async function fetchJoinableContests(admin: SupabaseClient): Promise<Cont
   ) as ContestRow[];
 }
 
-/** Join all 10 bots into a contest; initial buy when bell is open. */
+/** Join bots into a contest; initial buy when bell is open. */
 export async function seedBotsIntoContest(
   admin: SupabaseClient,
   contest: ContestRow,
-  prices?: Record<string, number>
+  prices?: Record<string, number>,
+  opts?: { limit?: number }
 ): Promise<BotActionResult[]> {
+  const botLimit = Math.min(PIT_BOTS.length, Math.max(1, opts?.limit ?? PIT_BOTS.length));
   const assets = (contest.assets as string[]) || [];
   const tradingOpen = isContestTradingOpen(contestClock(contest));
   const priceMap = prices ?? (assets.length ? await fetchMarketPrices(assets) : {});
   const results: BotActionResult[] = [];
 
-  for (let i = 0; i < PIT_BOTS.length; i++) {
+  for (let i = 0; i < botLimit; i++) {
     const trader = PIT_BOTS[i];
     const symbol = assets[i % Math.max(assets.length, 1)];
 

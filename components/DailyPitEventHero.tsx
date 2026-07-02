@@ -13,6 +13,7 @@ import ArenaCountdownRing from './ArenaCountdownRing';
 import PitFillBanner from './PitFillBanner';
 import OpeningBellStreakBadge from './OpeningBellStreakBadge';
 import TomorrowPitBanner from './TomorrowPitBanner';
+import SocialProofStrip from './SocialProofStrip';
 import ArenaTapeLeaders from './ArenaTapeLeaders';
 import type { ArenaPitItem } from './ArenaHome';
 
@@ -46,10 +47,12 @@ export default function DailyPitEventHero({
   const { contest, scheduled } = item;
   const phase = getCurrentDailyPitWindow().phase;
   const fill = getPitFillStatus(contest, participantCount);
+  const displayCount = Math.max(participantCount, fill.minEntries);
   const pool = computeEffectivePool(contest.slug, {
     entryFee: contest.entryFee || DAILY_ENTRY_FEE,
-    participantCount: Math.max(participantCount, fill.minEntries),
+    participantCount: displayCount,
   });
+  const poolPreview = participantCount < fill.minEntries;
   const maxPool = computeEffectivePool(contest.slug, {
     entryFee: contest.entryFee || DAILY_ENTRY_FEE,
     participantCount: DAILY_MAX_ENTRIES,
@@ -86,12 +89,13 @@ export default function DailyPitEventHero({
 
         <div className="dp-event-pool-block">
           <div className="dp-event-pool-label">Live prize pool</div>
-          <div className="dp-event-pool-amount">
-            ${participantCount >= fill.minEntries ? pool.toLocaleString() : '—'}
+          <div className={`dp-event-pool-amount ${poolPreview ? 'dp-event-pool-preview' : ''}`}>
+            ${pool.toLocaleString()}
+            {poolPreview && <span className="dp-event-pool-at-min"> at {fill.minEntries}</span>}
           </div>
           <div className="dp-event-pool-sub">
-            {participantCount > 0 && participantCount < fill.minEntries
-              ? `Fills at ${fill.minEntries} traders · $${computeEffectivePool(contest.slug, { entryFee: DAILY_ENTRY_FEE, participantCount: fill.minEntries }).toLocaleString()}`
+            {poolPreview
+              ? `Unlocks at ${fill.minEntries} traders · ${participantCount}/${fill.minEntries} now`
               : `Top ${paid || '—'} split the pot · $${DAILY_ENTRY_FEE} entry`}
           </div>
         </div>
@@ -124,6 +128,8 @@ export default function DailyPitEventHero({
           </div>
         </div>
       </div>
+
+      <SocialProofStrip participantCount={participantCount} slug={contest.slug} />
 
       <PitFillBanner fill={fill} className="mt-3" />
 

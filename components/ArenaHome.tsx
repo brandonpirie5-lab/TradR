@@ -26,6 +26,7 @@ type ArenaHomeProps = {
   isLoggedIn?: boolean;
   onWatchTape?: () => void;
   onSignIn?: () => void;
+  loading?: boolean;
 };
 
 export default function ArenaHome({
@@ -48,6 +49,7 @@ export default function ArenaHome({
   isLoggedIn = false,
   onWatchTape,
   onSignIn,
+  loading = false,
 }: ArenaHomeProps) {
   return (
     <div className="af-landing af-landing-v3">
@@ -71,6 +73,7 @@ export default function ArenaHome({
         isLoggedIn={isLoggedIn}
         onWatchTape={onWatchTape}
         onSignIn={onSignIn}
+        loading={loading}
       />
     </div>
   );

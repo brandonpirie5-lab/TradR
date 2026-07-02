@@ -7,6 +7,7 @@ import { formatBellCountdown } from '../lib/contest-bell';
 import type { ArenaPitItem } from './ArenaHome';
 import DailyPitEventHero from './DailyPitEventHero';
 import LowBalanceNudge from './LowBalanceNudge';
+import ArenaSkeleton from './ArenaSkeleton';
 
 type ArenaTodayBoardProps = {
   pits: ArenaPitItem[];
@@ -28,6 +29,7 @@ type ArenaTodayBoardProps = {
   isLoggedIn?: boolean;
   onWatchTape?: () => void;
   onSignIn?: () => void;
+  loading?: boolean;
 };
 
 export default function ArenaTodayBoard({
@@ -49,7 +51,16 @@ export default function ArenaTodayBoard({
   isLoggedIn = false,
   onWatchTape,
   onSignIn,
+  loading = false,
 }: ArenaTodayBoardProps) {
+  if (loading) {
+    return (
+      <div className="at-board at-board-v3">
+        <ArenaSkeleton />
+      </div>
+    );
+  }
+
   const mainItem = pits[0];
   const mainBoard = mainItem && getContestBoard ? getContestBoard(mainItem.contest.id) : [];
   const mainJoined = mainItem ? joinedContestIds.includes(mainItem.contest.id) : false;
