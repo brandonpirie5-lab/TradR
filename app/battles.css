@@ -1177,6 +1177,188 @@
   color: var(--text-muted);
 }
 
+/* Active battle — ticket stub */
+.bt-ticket-stub {
+  border: 1px solid var(--pit-gold-border);
+  border-top: 2px solid rgba(242, 219, 122, 0.4);
+  background: linear-gradient(180deg, var(--pit-slate) 0%, var(--pit-carbon) 100%);
+  border-radius: 18px;
+  padding: 14px 14px 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bt-ticket-stub-glow {
+  position: absolute;
+  top: -40%;
+  right: -15%;
+  width: 45%;
+  height: 70%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--pit-gold-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.bt-ticket-stub-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.bt-ticket-stub-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bt-ticket-stub-rank {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--pit-gold-light);
+}
+
+.bt-ticket-stub-paid {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pit-gold-pale);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pit-gold-border);
+  background: rgba(201, 162, 39, 0.1);
+}
+
+.bt-ticket-stub-clock {
+  text-align: right;
+}
+
+.bt-ticket-stub-clock-lbl {
+  display: block;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bt-ticket-stub-clock-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bt-ticket-stub-body {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.bt-ticket-stub-value-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.bt-ticket-stub-value-lbl {
+  display: block;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.bt-ticket-stub-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.bt-ticket-lead .bt-ticket-stub-value {
+  font-size: 32px;
+}
+
+.bt-ticket-stub-pnl {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.bt-ticket-stub-pnl.up { color: #4ade80; }
+.bt-ticket-stub-pnl.down { color: #f87171; }
+
+.bt-ticket-stub-assets {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.bt-ticket-stub-trades {
+  margin-bottom: 10px;
+}
+
+.bt-ticket-stub-zone {
+  margin-bottom: 4px;
+}
+
+.bt-ticket-stub-cta {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--pit-void);
+  background: linear-gradient(180deg, var(--pit-gold-pale) 0%, var(--pit-gold-light) 42%, var(--pit-gold) 100%);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+  margin-bottom: 8px;
+}
+
+.bt-ticket-stub-secondary {
+  width: 100%;
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pit-gold-light);
+  background: transparent;
+}
+
+.settlement-void-refund {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.settlement-void-refund strong {
+  color: #fecaca;
+}
+
+.settlement-share-primary {
+  color: var(--pit-void);
+  font-weight: 800;
+  background: linear-gradient(180deg, var(--pit-gold-pale) 0%, var(--pit-gold) 100%);
+  border: none;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+}
+
 /* Pit gold theme — matches Arena */
 .bt-shell .segmented-control button[data-active='true'],
 .bt-shell [aria-selected='true'] {

@@ -48,9 +48,14 @@ export async function POST(request: NextRequest) {
   const sessionId = session.id as string;
   const userId = session.metadata?.user_id;
   const amountUsd = Number(session.metadata?.amount_usd || 0);
+  const paymentStatus = session.payment_status as string | undefined;
 
   if (!userId || amountUsd <= 0) {
     return Response.json({ error: 'Invalid session metadata' }, { status: 400 });
+  }
+
+  if (paymentStatus && paymentStatus !== 'paid') {
+    return Response.json({ received: true, skipped: paymentStatus });
   }
 
   const admin = getSupabaseAdmin();

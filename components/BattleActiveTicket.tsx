@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Contest, LeaderboardEntry, Participation } from '../lib/game-types';
 import { analyzeMoneyZone } from '../lib/money-zone';
 import { TimeLeftLabel } from './BellCountdown';
-
 import MoneyZoneBar from './MoneyZoneBar';
 import TradeMeter from './TradeMeter';
 import type { TradeLimitInfo } from '../lib/trade-limits';
 import { useCalmLiveStats } from '../lib/use-calm-live-stats';
+import { DAILY_ASSETS } from '../lib/daily-pit-config';
 
 type BattleActiveTicketProps = {
   contest: Contest;
@@ -24,7 +24,7 @@ type BattleActiveTicketProps = {
   hero?: boolean;
   onTrade: () => void;
   onLeaderboard: () => void;
-  onInfo: () => void;
+  onInfo?: () => void;
 };
 
 export default function BattleActiveTicket({
@@ -40,7 +40,6 @@ export default function BattleActiveTicket({
   hero = false,
   onTrade,
   onLeaderboard,
-  onInfo,
 }: BattleActiveTicketProps) {
   const [positionsOpen, setPositionsOpen] = useState(false);
   const positions = participation.positions;
@@ -52,82 +51,77 @@ export default function BattleActiveTicket({
       : zone.status === 'bubble'
         ? 'bt-ticket-zone-bubble'
         : '';
+  const assets =
+    contest.slug === 'daily-pit' ? [...DAILY_ASSETS] : contest.assets.slice(0, 5);
+
   return (
     <article
-      className={`bt-ticket bt-ticket-active bt-ticket-poster ${zoneTone} ${hero ? 'bt-ticket-lead' : ''}`}
+      className={`bt-ticket bt-ticket-stub bt-ticket-active ${zoneTone} ${hero ? 'bt-ticket-lead' : ''}`}
       data-tour="overview"
     >
-      <div className="bt-ticket-poster-glow" aria-hidden />
-      <div className="bt-ticket-accent" aria-hidden />
-      <div className="bt-ticket-inner">
-        <div className="bt-ticket-top">
-          <div className="bt-ticket-badges">
-            <span className="bt-badge bt-badge-live">
-              <span className="bt-badge-dot" aria-hidden />
-              Live
-            </span>
-            {hero && <span className="bt-badge bt-badge-lead">Your ticket</span>}
-            {calm.displayRank != null && (
-              <span className="bt-badge bt-badge-rank">#{calm.displayRank}</span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onInfo}
-            className="bt-ticket-info"
-            aria-label="Contest info"
-            data-tour="contest-info"
-          >
-            <Info size={14} />
-          </button>
+      <div className="bt-ticket-stub-glow" aria-hidden />
+
+      <div className="bt-ticket-stub-head">
+        <div className="bt-ticket-stub-badges">
+          <span className="bt-badge bt-badge-live">
+            <span className="bt-badge-dot" aria-hidden />
+            Live
+          </span>
+          {calm.displayRank != null && (
+            <span className="bt-ticket-stub-rank">#{calm.displayRank}</span>
+          )}
+          {zone.status === 'in-the-money' && (
+            <span className="bt-ticket-stub-paid">In the money</span>
+          )}
         </div>
+        <div className="bt-ticket-stub-clock">
+          <span className="bt-ticket-stub-clock-lbl">Closes</span>
+          <span className="bt-ticket-stub-clock-val">
+            {contest.endsAt ? (
+              <TimeLeftLabel endsAt={contest.endsAt} status={contest.status} tick={bellTick} />
+            ) : (
+              contest.timeLeft
+            )}
+          </span>
+        </div>
+      </div>
 
-        <h3 className={`bt-ticket-name ${hero ? 'bt-ticket-name-lead' : ''}`}>{contest.title}</h3>
-
-        <div className={`bt-ticket-hero-stats ${hero ? 'bt-ticket-hero-stats-lead' : ''}`}>
-          <div className="bt-ticket-hero-main">
+      <div className="bt-ticket-stub-body">
+        <div className="bt-ticket-stub-value-row">
+          <div>
+            <span className="bt-ticket-stub-value-lbl">Portfolio</span>
             <span
-              className={`bt-ticket-value ${hero ? 'bt-ticket-value-lead' : ''} ${calm.valueFlash === 'up' ? 'bt-value-flash-up' : calm.valueFlash === 'down' ? 'bt-value-flash-down' : ''}`}
+              className={`bt-ticket-stub-value ${calm.valueFlash === 'up' ? 'bt-value-flash-up' : calm.valueFlash === 'down' ? 'bt-value-flash-down' : ''}`}
             >
               ${calm.displayValue.toLocaleString()}
             </span>
-            <span
-              className={`bt-ticket-pnl-pill ${calm.displayPnl >= 0 ? 'bt-ticket-pnl-pill-up' : 'bt-ticket-pnl-pill-down'}`}
-            >
-              {calm.displayPnl >= 0 ? '+' : ''}
-              {calm.displayPnl.toFixed(1)}%
-            </span>
           </div>
-          <div className="bt-ticket-hero-side">
-            <span className="bt-ticket-hero-label">Bell closes</span>
-            <span className="bt-ticket-hero-time">
-              {contest.endsAt ? (
-                <TimeLeftLabel endsAt={contest.endsAt} status={contest.status} tick={bellTick} />
-              ) : (
-                contest.timeLeft
-              )}
-            </span>
-          </div>
+          <span
+            className={`bt-ticket-stub-pnl ${calm.displayPnl >= 0 ? 'up' : 'down'}`}
+          >
+            {calm.displayPnl >= 0 ? '+' : ''}
+            {calm.displayPnl.toFixed(1)}%
+          </span>
         </div>
 
-        <p className="bt-ticket-tape-line">Tape: {contest.assets.join(' · ')}</p>
+        <p className="bt-ticket-stub-assets">{assets.join(' · ')}</p>
 
-        <div className="bt-ticket-zone" data-tour="money-zone">
+        {tradeLimit && (
+          <div className="bt-ticket-stub-trades" data-tour="stats">
+            <TradeMeter info={tradeLimit} compact />
+          </div>
+        )}
+
+        <div className="bt-ticket-stub-zone" data-tour="money-zone">
           <MoneyZoneBar
             entries={board}
             yourValue={calm.displayValue}
             slug={contest.slug}
             entryFee={contest.entryFee}
-            compact={!hero}
+            compact
             hero={hero}
           />
         </div>
-
-        {tradeLimit && (
-          <div className="bt-ticket-trades" data-tour="stats">
-            <TradeMeter info={tradeLimit} compact />
-          </div>
-        )}
 
         {positions.length > 0 && (
           <div className="bt-ticket-positions">
@@ -161,14 +155,14 @@ export default function BattleActiveTicket({
             )}
           </div>
         )}
-
-        <button type="button" onClick={onTrade} className="bt-ticket-cta" data-tour="trade">
-          {hero ? 'Send it — trade now' : 'Trade now'}
-        </button>
-        <button type="button" onClick={onLeaderboard} className="bt-ticket-action-full">
-          Vault leaderboard
-        </button>
       </div>
+
+      <button type="button" onClick={onTrade} className="bt-ticket-stub-cta" data-tour="trade">
+        Trade now
+      </button>
+      <button type="button" onClick={onLeaderboard} className="bt-ticket-stub-secondary">
+        Vault leaderboard →
+      </button>
     </article>
   );
 }

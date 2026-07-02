@@ -26,6 +26,8 @@ export async function createCheckoutSession(params: {
     'line_items[0][quantity]': '1',
     'metadata[user_id]': params.userId,
     'metadata[amount_usd]': String(params.amountUsd),
+    'metadata[app]': 'tradr-pit',
+    'client_reference_id': params.userId,
     customer_email: params.email,
   });
 

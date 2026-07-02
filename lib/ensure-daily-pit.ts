@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getCurrentDailyPitWindow } from './daily-pit-schedule';
-import { DAILY_PIT_SLUG } from './daily-pit-config';
-import { getContestAssetSchedule } from './pit-asset-schedule';
+import { DAILY_ASSETS, DAILY_PIT_SLUG } from './daily-pit-config';
+import { closeZombieDailyPits } from './close-zombie-daily-pits';
 import { PIT_CONTEST_CATALOG } from './pit-contests';
 
 /** Ensure an open daily pit exists so users can ring in early (today or tomorrow). */
@@ -9,6 +9,12 @@ export async function ensureDailyPitContest(admin: SupabaseClient): Promise<numb
   const nowIso = new Date().toISOString();
   const template = PIT_CONTEST_CATALOG[0];
   const w = getCurrentDailyPitWindow();
+
+  try {
+    await closeZombieDailyPits(admin);
+  } catch (e) {
+    console.warn('closeZombieDailyPits', e);
+  }
 
   const { data: existing } = await admin
     .from('contests')
@@ -24,11 +30,14 @@ export async function ensureDailyPitContest(admin: SupabaseClient): Promise<numb
     const startsMs = row.starts_at ? new Date(row.starts_at).getTime() : 0;
     const targetStartsMs = w.startsAt.getTime();
     if (Math.abs(startsMs - targetStartsMs) < 2 * 60 * 60 * 1000) {
+      await admin
+        .from('contests')
+        .update({ assets: [...DAILY_ASSETS], slug: DAILY_PIT_SLUG })
+        .eq('id', row.id);
       return row.id;
     }
   }
 
-  const schedule = getContestAssetSchedule(DAILY_PIT_SLUG, w.startsAt);
   const status = w.phase === 'live' ? 'active' : 'open';
 
   const payload: Record<string, unknown> = {
@@ -42,7 +51,7 @@ export async function ensureDailyPitContest(admin: SupabaseClient): Promise<numb
     max_entries: template.maxEntries,
     status,
     starting_portfolio: 100_000,
-    assets: schedule.assets,
+    assets: [...DAILY_ASSETS],
     starts_at: w.startsAt.toISOString(),
     ends_at: w.endsAt.toISOString(),
   };

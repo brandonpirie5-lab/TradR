@@ -108,11 +108,7 @@ export default function VaultTab({
         )}
       </div>
 
-      {isSpectating && onJoinPit && (
-        <button type="button" className="vt-spectate-join btn btn-primary w-full py-3 text-sm mb-4" onClick={onJoinPit}>
-          Ring in — ${vaultContest.entryFee} · join the tape
-        </button>
-      )}
+
 
       {isLive && (
         <div className="vt-feed-wrap vt-feed-wrap-prominent">
@@ -149,6 +145,20 @@ export default function VaultTab({
       <button type="button" className="vt-refresh-link" onClick={onRefreshPit}>
         Refresh rankings
       </button>
+
+      {isSpectating && onJoinPit && (
+        <div className={`vt-spectate-sticky ${isLive ? 'vt-spectate-sticky-live' : ''}`}>
+          <div className="vt-spectate-sticky-copy">
+            <span className="vt-spectate-sticky-kicker">Join the floor</span>
+            <span className="vt-spectate-sticky-sub">
+              ${vaultContest.entryFee} in · top half cash · virtual $100k
+            </span>
+          </div>
+          <button type="button" className="vt-spectate-sticky-cta" onClick={onJoinPit}>
+            Ring in
+          </button>
+        </div>
+      )}
     </div>
   );
 }

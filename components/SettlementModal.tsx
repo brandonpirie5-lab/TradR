@@ -85,8 +85,14 @@ export default function SettlementModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="settlement-card-kicker">
-          {result.voided ? 'Pit didn\'t fill' : 'Bell rung — pit closed'}
+          {result.voided ? 'Pit voided — not enough traders' : 'Bell rung — pit closed'}
         </div>
+
+        {result.voided && (result.refund ?? 0) > 0 && (
+          <div className="settlement-void-refund" role="status">
+            <strong>${result.refund!.toFixed(2)}</strong> refunded to your wallet
+          </div>
+        )}
 
         {streak.count >= 2 && (
           <div className="dp-streak-badge mx-auto mb-4 w-fit">
@@ -129,11 +135,20 @@ export default function SettlementModal({
         )}
 
         <div className="flex flex-col gap-2">
-          {nextPit && canJoinNextPit ? (
-            <button type="button" onClick={onRunItBack} className="btn btn-primary w-full py-3.5 text-sm">
-              {runItBackLabel}
+          {!result.voided && (isWin || isPodium) && (
+            <button
+              type="button"
+              onClick={onShare}
+              className="settlement-share-primary w-full py-3.5 text-sm rounded-xl flex items-center justify-center gap-2"
+            >
+              <Share2 size={16} /> Share your result
             </button>
-          ) : null}
+          )}
+          {nextPit && canJoinNextPit && (
+            <button type="button" onClick={onRunItBack} className="btn btn-primary w-full py-3.5 text-sm">
+              {result.voided ? `Ring in tomorrow · $${nextPit.entryFee}` : runItBackLabel}
+            </button>
+          )}
           {!result.voided && (
             <button
               type="button"
@@ -143,6 +158,11 @@ export default function SettlementModal({
               Read the tape
             </button>
           )}
+          {result.voided && (!nextPit || !canJoinNextPit) && (
+            <button type="button" onClick={onRunItBack} className="btn btn-primary w-full py-3.5 text-sm">
+              Back to Arena
+            </button>
+          )}
           <button
             type="button"
             onClick={onViewDone}
@@ -150,22 +170,24 @@ export default function SettlementModal({
           >
             View in Done tab
           </button>
-          {(!nextPit || !canJoinNextPit) && (
+          {(!nextPit || !canJoinNextPit) && !result.voided && (
             <button
               type="button"
               onClick={onRunItBack}
-              className={`w-full py-3.5 text-sm rounded-xl ${result.voided ? 'btn btn-primary' : 'border border-accent/40 text-accent'}`}
+              className="w-full py-3.5 text-sm rounded-xl border border-accent/40 text-accent"
             >
               {runItBackLabel}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onShare}
-            className="w-full py-2.5 text-sm border border-card text-muted rounded-xl flex items-center justify-center gap-2"
-          >
-            <Share2 size={14} /> Share result
-          </button>
+          {(result.voided || (!isWin && !isPodium)) && (
+            <button
+              type="button"
+              onClick={onShare}
+              className="w-full py-2.5 text-sm border border-card text-muted rounded-xl flex items-center justify-center gap-2"
+            >
+              <Share2 size={14} /> Share result
+            </button>
+          )}
         </div>
       </div>
     </div>

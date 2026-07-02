@@ -1,5 +1,13 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { DAILY_PIT_SLUG } from './daily-pit-config';
 import { PIT_CONTEST_CATALOG } from './pit-contests';
+
+const ET = 'America/New_York';
+
+function dailyPitDayKey(startsAt: string | null | undefined): string {
+  if (!startsAt) return 'unknown';
+  return new Date(startsAt).toLocaleDateString('en-CA', { timeZone: ET });
+}
 const LEGACY_TITLE_TO_SLUG: Record<string, string> = {
   'Macro Royale': 'the-liquidation',
   'Double Up': 'full-send',
@@ -39,6 +47,9 @@ export function resolveContestSlug(row: Pick<LiveRow, 'title' | 'slug'>): string
 
 export function contestDedupeKey(row: LiveRow, now = new Date()): string {
   const slug = resolveContestSlug(row) ?? row.title;
+  if (slug === DAILY_PIT_SLUG || slug === 'daily-pit') {
+    return `daily-pit:${dailyPitDayKey(row.starts_at)}`;
+  }
   const day = row.starts_at ? new Date(row.starts_at).getDay() : now.getDay();
   return `${slug}:${day}`;
 }

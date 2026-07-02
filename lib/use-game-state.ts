@@ -1246,6 +1246,9 @@ export function useGameState({
               serverSettledShownRef.current.add(yours.id);
               markSettlementSeen(yours.id);
               const settledContest = contestsRef.current.find((x) => x.id === yours.id);
+              if (yours.voided && yours.yourRefund) {
+                showToastRef.current(`Pit voided — $${yours.yourRefund.toFixed(2)} refunded to your wallet`);
+              }
               onSettlementRef.current({
                 contestId: yours.id,
                 contestSlug: settledContest?.slug,

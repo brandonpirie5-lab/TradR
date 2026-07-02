@@ -286,3 +286,55 @@
 .vt-spectate-hint {
   line-height: 1.5;
 }
+
+.vt-spectate-sticky {
+  position: sticky;
+  bottom: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--pit-gold-border);
+  background: linear-gradient(180deg, var(--pit-slate) 0%, rgba(6, 5, 4, 0.98) 100%);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  z-index: 5;
+}
+
+.vt-spectate-sticky-live {
+  border-color: rgba(242, 219, 122, 0.45);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 0 20px var(--pit-gold-glow);
+}
+
+.vt-spectate-sticky-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vt-spectate-sticky-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pit-gold-light);
+}
+
+.vt-spectate-sticky-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.vt-spectate-sticky-cta {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--pit-void);
+  background: linear-gradient(180deg, var(--pit-gold-pale) 0%, var(--pit-gold) 100%);
+}

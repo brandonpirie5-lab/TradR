@@ -198,6 +198,19 @@ export function dayIndexFromDate(date: Date): number {
 }
 
 export function getContestAssetSchedule(slug: string, date: Date = new Date()): PitAssetSchedule {
+  if (isDailyPitSlug(slug)) {
+    const day = dayIndexFromDate(date);
+    const assets = [...DAILY_ASSETS];
+    return {
+      assets,
+      poolId: 'tradfi-hybrid',
+      theme: `${DAY_NAMES[day]} • Daily tape`,
+      dayName: DAY_NAMES[day],
+      assetCount: assets.length,
+      poolLabel: 'Daily five',
+    };
+  }
+
   const day = dayIndexFromDate(date);
   const dayName = DAY_NAMES[day];
   const poolId = getPoolForSlugDay(slug, day);
@@ -236,7 +249,7 @@ export function resolveContestAssets(
   if (isDailyPitSlug(slug)) {
     const anchor = startsAt ? new Date(startsAt) : new Date();
     const dayName = DAY_NAMES[dayIndexFromDate(anchor)];
-    const assets = fallback.length ? fallback : [...DAILY_ASSETS];
+    const assets = [...DAILY_ASSETS];
     return {
       assets,
       poolId: 'tradfi-hybrid',
