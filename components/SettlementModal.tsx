@@ -1,8 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Share2 } from 'lucide-react';
+import { Flame, Share2 } from 'lucide-react';
 import SettleShareCard from './SettleShareCard';
+import { getCurrentDailyPitWindow, msUntilDailyPitOpen, formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
+import { formatBellCountdown } from '../lib/contest-bell';
+import { getDailyStreak } from '../lib/daily-streak';
 
 export type SettlementPayload = {
   contestId: number;
@@ -38,6 +41,10 @@ export default function SettlementModal({
   onViewDone,
   onDismiss,
 }: SettlementModalProps) {
+  const phase = getCurrentDailyPitWindow().phase;
+  const openMs = msUntilDailyPitOpen();
+  const streak = getDailyStreak();
+
   const runItBackLabel = nextPit
     ? canJoinNextPit
       ? `Ring in — $${nextPit.entryFee} · ${nextPit.title}`
@@ -45,6 +52,17 @@ export default function SettlementModal({
     : 'Back to Arena';
   const isWin = !result.voided && result.rank === 1;
   const isPodium = !result.voided && result.rank > 1 && result.rank <= 3;
+
+  const nextPitCopy =
+    phase === 'between'
+      ? openMs > 0
+        ? `Tomorrow's pit rings in ${formatBellCountdown(openMs)} · ${formatDailyPitScheduleLabel()}`
+        : `Tomorrow's pit rings at 9:30 AM ET · same tape, bigger pot`
+      : canJoinNextPit && nextPit
+        ? `Today's pit is still open — ring in again and run it back on the tape.`
+        : nextPit
+          ? `You're on today's tape. Bell closes at 4:00 PM ET.`
+          : null;
 
   return (
     <div
@@ -69,6 +87,13 @@ export default function SettlementModal({
         <div className="settlement-card-kicker">
           {result.voided ? 'Pit didn\'t fill' : 'Bell rung — pit closed'}
         </div>
+
+        {streak.count >= 2 && (
+          <div className="dp-streak-badge mx-auto mb-4 w-fit">
+            <Flame size={14} className="text-orange-400 shrink-0" aria-hidden />
+            <span>{streak.count}-day streak</span>
+          </div>
+        )}
 
         <SettleShareCard
           contestTitle={result.contestTitle}
@@ -97,9 +122,9 @@ export default function SettlementModal({
             </div>
           )}
 
-        {nextPit && canJoinNextPit && (
+        {nextPitCopy && (
           <p className="text-[11px] text-muted mb-4 leading-relaxed">
-            Today&apos;s pit is open — ring in again and run it back on the tape.
+            {nextPitCopy}
           </p>
         )}
 

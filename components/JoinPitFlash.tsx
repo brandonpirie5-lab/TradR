@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { Zap } from 'lucide-react';
+import { formatDailyPitScheduleLabel } from '../lib/daily-pit-schedule';
 
 export default function JoinPitFlash({
   title,
@@ -24,6 +25,7 @@ export default function JoinPitFlash({
         <div className="text-[10px] tracking-[4px] text-muted uppercase mb-1">You&apos;re on the tape</div>
         <div className="font-black text-xl tracking-tight text-accent">{title}</div>
         <div className="text-xs text-muted mt-2">$100,000 loaded — send it</div>
+        <div className="text-[10px] text-muted/80 mt-3">{formatDailyPitScheduleLabel()}</div>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import type { Contest, LeaderboardEntry, Participation, UserPerformanceStats } from './game-types';
 import { getPortfolioValue as calcPortfolioValue } from './portfolio';
 import { findDailyPitContest, isStaleOpeningBellContest } from './pit-contests';
-import { featuredPitSortScore } from './tape-week';
 import {
   isContestStarted,
   isContestTradingOpen,
@@ -148,6 +147,9 @@ export function resolveVaultContestId(params: {
     });
     return live ?? joinedContests[joinedContests.length - 1];
   }
+  if (canonicalOpeningBell && canonicalOpeningBell.status !== 'closed') {
+    return canonicalOpeningBell.id;
+  }
   return featuredContest?.id ?? null;
 }
 
@@ -155,48 +157,15 @@ export function buildArenaPitList(
   contests: Contest[],
   joinedContests: number[]
 ): ArenaPitListItem[] {
-  const canonicalOpeningBell = findDailyPitContest(contests);
-  const todayDayIndex = new Date().getDay();
+  const daily = findDailyPitContest(contests);
+  if (!daily || daily.status === 'closed') return [];
 
-  const isJoinableContest = (c: Contest) =>
-    (c.status === 'open' || c.status === 'active') && isJoinAllowed(c);
+  const isJoinable =
+    (daily.status === 'open' || daily.status === 'active') && isJoinAllowed(daily);
+  if (!isJoinable && !joinedContests.includes(daily.id)) return [];
 
-  const arenaPitPriority = (c: Contest, scheduled: boolean) => {
-    const joined = joinedContests.includes(c.id);
-    if (joined && isContestTradingOpen(c)) return 0;
-    if (joined && scheduled) return 1;
-    if (!joined && isContestTradingOpen(c)) return 2;
-    return 3;
-  };
-
-  const arenaPitList: ArenaPitListItem[] = [];
-  const seenArenaPitIds = new Set<number>();
-
-  for (const c of contests) {
-    if (c.status !== 'open' && c.status !== 'active') continue;
-    if (isStaleOpeningBellContest(c, canonicalOpeningBell)) continue;
-
-    const scheduled = isJoinableContest(c) && !isContestStarted(c);
-    const live = isContestTradingOpen(c);
-    if (!live && !scheduled) continue;
-    if (seenArenaPitIds.has(c.id)) continue;
-
-    arenaPitList.push({ contest: c, scheduled });
-    seenArenaPitIds.add(c.id);
-  }
-
-  arenaPitList.sort((a, b) => {
-    const priorityDiff =
-      arenaPitPriority(a.contest, a.scheduled) - arenaPitPriority(b.contest, b.scheduled);
-    if (priorityDiff !== 0) return priorityDiff;
-    const featuredDiff =
-      featuredPitSortScore(a.contest.slug, todayDayIndex) -
-      featuredPitSortScore(b.contest.slug, todayDayIndex);
-    if (featuredDiff !== 0) return featuredDiff;
-    return b.contest.firstPrize - a.contest.firstPrize;
-  });
-
-  return arenaPitList;
+  const scheduled = isJoinable && !isContestStarted(daily);
+  return [{ contest: daily, scheduled }];
 }
 
 export function isBattleOpen(

@@ -13,7 +13,6 @@ export function schedulePitCycle(admin: SupabaseClient, actingUserId?: string): 
         activated: 0,
         settled: [],
         spawned: 0,
-        weekSlate: 0,
         rotation: [],
       } satisfies PitCycleResult;
     })

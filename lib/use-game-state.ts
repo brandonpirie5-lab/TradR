@@ -29,6 +29,7 @@ import {
 import { getContestRules } from './contest-rules';
 import { payoutForContestRankLive } from './pit-pool-math';
 import { loadSeenSettlementIds, markSettlementSeen } from './settlement-storage';
+import { recordDailyPitPlay } from './daily-streak';
 import {
   isContestBellOpen,
   isContestStarted,
@@ -469,6 +470,10 @@ export function useGameState({
           const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
           onJoinFlash(contest.title);
+          const streak = recordDailyPitPlay();
+          if (streak.extended && streak.count >= 3) {
+            showToast(`${streak.count}-day pit streak 🔥`);
+          }
           const fresh = contests.find((c) => c.id === contestId) ?? contest;
           if (contest.assets?.length) await fetchLivePrices(contest.assets);
           onRouteAfterJoin(fresh);
@@ -510,6 +515,10 @@ export function useGameState({
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       setHistory((h) => [{ time: now, action: `Joined ${contest.title} (-$${contest.entryFee})` }, ...h].slice(0, 12));
       onJoinFlash(contest.title);
+      const streak = recordDailyPitPlay();
+      if (streak.extended && streak.count >= 3) {
+        showToast(`${streak.count}-day pit streak 🔥`);
+      }
       if (contest.assets?.length) await fetchLivePrices(contest.assets);
       onRouteAfterJoin(contest);
       if (isContestTradingOpen(contest)) {

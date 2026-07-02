@@ -207,6 +207,7 @@ export default function TradR() {
     getContestBoard,
     syncGameFromServer,
     refreshLeaderboard,
+    loadPitFeed,
     loadUserData,
     loadTradeLimit,
     fetchLivePrices,
@@ -296,14 +297,19 @@ export default function TradR() {
     return () => clearInterval(interval);
   }, [tradingContestId, contests, fetchLivePrices]);
 
+  const isVaultSpectating =
+    !!activeVaultContestId && !joinedContests.includes(activeVaultContestId);
+
   useEffect(() => {
     if (!usingServerGame || activeTab !== 'leaderboard' || !activeVaultContestId) return;
     void refreshLeaderboard(activeVaultContestId);
+    void loadPitFeed(activeVaultContestId);
     const interval = setInterval(() => {
       void refreshLeaderboard(activeVaultContestId);
+      void loadPitFeed(activeVaultContestId);
     }, 30000);
     return () => clearInterval(interval);
-  }, [activeTab, activeVaultContestId, usingServerGame, refreshLeaderboard]);
+  }, [activeTab, activeVaultContestId, usingServerGame, refreshLeaderboard, loadPitFeed]);
 
   const yourRank = dynamicVault.find((e) => e.isYou)?.rank || (dynamicVault.length ? dynamicVault.length + 1 : 1);
   const vaultPlayerCount = dynamicVault.length;
@@ -889,6 +895,10 @@ export default function TradR() {
               isYou: f.isYou,
             }))}
             pitFeedLoading={pitFeedLoading}
+            isSpectating={isVaultSpectating}
+            onJoinPit={() => {
+              if (dailyPitContest) joinArena(dailyPitContest.id);
+            }}
             onSelectVaultContest={async (id) => {
               setVaultContestId(id);
               try {
